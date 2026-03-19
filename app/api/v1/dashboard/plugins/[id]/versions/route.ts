@@ -1,0 +1,129 @@
+import { NextResponse } from "next/server";
+import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+
+function parseMinecraftVersions(input: string) {
+  return input
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function normalizeSemver(input: string): string | null {
+  const trimmed = input.trim().replace(/^v/i, "");
+  const parts = trimmed.split(".");
+  if (parts.length === 1 && /^\d+$/.test(parts[0]))
+    return `${parts[0]}.0.0`;
+  if (parts.length === 2 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1]))
+    return `${parts[0]}.${parts[1]}.0`;
+  if (parts.length === 3 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1]) && /^\d+$/.test(parts[2]))
+    return trimmed;
+  return null;
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const sellerId = await getAuthedUserId();
+    if (!sellerId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+    const formData = await request.formData();
+    const version = String(formData.get("version") ?? "");
+    const changelog = String(formData.get("changelog") ?? "");
+    const minecraftVersionsRaw =
+      typeof formData.get("minecraft_versions") === "string"
+        ? formData.get("minecraft_versions") as string
+        : (formData.getAll("minecraft_versions") as string[]).filter(Boolean).join(",");
+    const serverPlatform = String(formData.get("server_platform") ?? "").trim() || null;
+    const jarFile = formData.get("jar_file") as File | null;
+
+    const normalizedVersion = version ? normalizeSemver(version) : null;
+    if (!normalizedVersion) {
+      return NextResponse.json(
+        { error: "Version must be semver (e.g. 1.0.0 or 1.0)", code: "invalid_semver" },
+        { status: 400 }
+      );
+    }
+    if (!jarFile || jarFile.size === 0) {
+      return NextResponse.json(
+        { error: "Please select a .jar file", code: "missing_jar" },
+        { status: 400 }
+      );
+    }
+
+    const minecraft_versions = parseMinecraftVersions(minecraftVersionsRaw);
+    if (!minecraft_versions.length) {
+      return NextResponse.json(
+        { error: "Enter at least one Minecraft version (e.g. 1.20, 1.21)", code: "missing_minecraft_versions" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createSupabaseServerClient();
+
+    // Ensure plugin belongs to seller
+    const { data: plugin } = await supabase
+      .from("plugins")
+      .select("id, seller_id")
+      .eq("id", params.id)
+      .maybeSingle();
+
+    if (!plugin || plugin.seller_id !== sellerId) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+
+    // Mark previous versions as not latest
+    await supabase
+      .from("plugin_versions")
+      .update({ is_latest: false })
+      .eq("plugin_id", params.id);
+
+    // Upload jar to private bucket — keep original filename (sanitize for path safety only)
+    const originalName = jarFile.name.replace(/^.*[/\\]/, "").trim() || "plugin.jar";
+    const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `jars/${params.id}/${safeName}`;
+    const uploadRes = await supabase.storage
+      .from("plugin-files")
+      .upload(path, jarFile, { contentType: jarFile.type || "application/java-archive" });
+
+    if (uploadRes.error) {
+      const msg =
+        uploadRes.error.message?.toLowerCase().includes("bucket")
+          ? "Storage bucket 'plugin-files' not found. In Supabase Dashboard go to Storage → New bucket → name it 'plugin-files', set it to Private."
+          : `Upload failed: ${uploadRes.error.message}`;
+      return NextResponse.json(
+        { error: msg, code: "upload_failed" },
+        { status: 400 }
+      );
+    }
+
+    const insertPayload: Record<string, unknown> = {
+      plugin_id: params.id,
+      version: normalizedVersion,
+      changelog,
+      file_url: path,
+      minecraft_versions,
+      is_latest: true
+    };
+    if (serverPlatform) insertPayload.server_platform = serverPlatform;
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from("plugin_versions")
+      .insert(insertPayload)
+      .select("id")
+      .single();
+
+    if (insertErr || !inserted) {
+      return NextResponse.json(
+        { error: insertErr?.message ?? "Failed to save version", code: "insert_failed" },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ id: inserted.id }, { status: 200 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "internal_error" }, { status: 500 });
+  }
+}
+
