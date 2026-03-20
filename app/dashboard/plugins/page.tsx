@@ -7,6 +7,13 @@ export default async function MyPluginsPage() {
   if (!userId) return null;
 
   const supabase = createSupabaseServerClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", userId)
+    .maybeSingle();
+  const accountName = profile?.username ?? "account";
+
   const { data: plugins } = await supabase
     .from("plugins")
     .select("id, slug, name, status, updated_at")
@@ -43,13 +50,17 @@ export default async function MyPluginsPage() {
                 <Link href={`/dashboard/plugins/${p.id}/edit`} className="rounded-md border border-gray-800 bg-gray-950 px-3 py-1.5 text-xs text-gray-100">
                   Edit
                 </Link>
-                <Link href={`/dashboard/plugins/${p.id}/versions`} className="rounded-md border border-gray-800 bg-gray-950 px-3 py-1.5 text-xs text-gray-100">
+                <Link href={`/dashboard/plugins/${p.id}/edit?tab=versions`} className="rounded-md border border-gray-800 bg-gray-950 px-3 py-1.5 text-xs text-gray-100">
                   Add version
                 </Link>
                 <Link href={`/plugin/${p.slug}`} className="rounded-md border border-gray-800 bg-gray-950 px-3 py-1.5 text-xs text-gray-100">
                   View
                 </Link>
-                <DeletePluginButton pluginId={p.id} pluginName={p.name} />
+                <DeletePluginButton
+                  pluginId={p.id}
+                  pluginName={p.name}
+                  username={accountName}
+                />
               </div>
             </div>
           ))

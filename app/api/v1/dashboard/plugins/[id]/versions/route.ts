@@ -108,11 +108,33 @@ export async function POST(
     };
     if (serverPlatform) insertPayload.server_platform = serverPlatform;
 
-    const { data: inserted, error: insertErr } = await supabase
-      .from("plugin_versions")
-      .insert(insertPayload)
-      .select("id")
-      .single();
+    // Some local/dev schemas may not yet have `server_platform` added.
+    // If Supabase complains about the missing column, retry without it.
+    let inserted: any = null;
+    let insertErr: any = null;
+    try {
+      const res = await supabase
+        .from("plugin_versions")
+        .insert(insertPayload)
+        .select("id")
+        .single();
+      inserted = res.data;
+      insertErr = res.error;
+    } catch (err: any) {
+      insertErr = err;
+      const msg = String(err?.message ?? "").toLowerCase();
+      if (serverPlatform && msg.includes("server_platform")) {
+        // Retry without `server_platform` to keep uploads working.
+        delete insertPayload.server_platform;
+        const retry = await supabase
+          .from("plugin_versions")
+          .insert(insertPayload)
+          .select("id")
+          .single();
+        inserted = retry.data;
+        insertErr = retry.error;
+      }
+    }
 
     if (insertErr || !inserted) {
       return NextResponse.json(

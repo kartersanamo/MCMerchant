@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { generateLicenseKey } from "@/lib/license";
+import { issueLicense } from "@/lib/licensing/generate";
 import { getResend } from "@/lib/resend";
 import PurchaseConfirmationEmail from "@/emails/purchase-confirmation";
-import { render } from "@react-email/render";
 
 async function handleCheckoutSessionCompleted(event: any) {
   const session = event.data.object;
@@ -13,9 +12,23 @@ async function handleCheckoutSessionCompleted(event: any) {
   const buyer_id = session.metadata?.buyer_id as string | undefined;
   const version_id = session.metadata?.version_id as string | undefined;
 
-  if (!plugin_id || !buyer_id || !version_id) return;
+  try {
+    if (!plugin_id || !buyer_id || !version_id) {
+      console.warn("[Stripe webhook] Missing metadata for checkout.session.completed", {
+        plugin_id: plugin_id ?? null,
+        buyer_id: buyer_id ? buyer_id.slice(-8) : null,
+        version_id: version_id ?? null
+      });
+      return;
+    }
 
-  const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerClient();
+
+    console.info("[Stripe webhook] checkout.session.completed", {
+      plugin_id,
+      buyer_id: buyer_id.slice(-8),
+      version_id
+    });
 
   // Stripe checkout session is already charged; we finalize purchase record.
   const stripe_payment_intent_id = session.payment_intent as string | undefined;
@@ -23,7 +36,14 @@ async function handleCheckoutSessionCompleted(event: any) {
   const platform_fee_percent = Number(process.env.STRIPE_PLATFORM_FEE_PERCENT ?? 10);
   const platform_fee_cents = Math.round(amount_cents * (platform_fee_percent / 100));
 
-  if (!stripe_payment_intent_id) return;
+    if (!stripe_payment_intent_id) {
+      console.warn("[Stripe webhook] Missing payment_intent for checkout.session.completed", {
+        plugin_id,
+        buyer_id: buyer_id.slice(-8),
+        version_id
+      });
+      return;
+    }
 
   const { data: plugin } = await supabase
     .from("plugins")
@@ -37,7 +57,15 @@ async function handleCheckoutSessionCompleted(event: any) {
     .eq("id", buyer_id)
     .maybeSingle();
 
-  if (!plugin || !profile) return;
+    if (!plugin || !profile) {
+      console.warn("[Stripe webhook] Plugin or profile not found", {
+        plugin_found: Boolean(plugin),
+        profile_found: Boolean(profile),
+        plugin_id,
+        buyer_id: buyer_id.slice(-8)
+      });
+      return;
+    }
 
   // 1) Upsert purchase to completed
   const { data: purchase, error: purchaseErr } = await supabase
@@ -57,21 +85,31 @@ async function handleCheckoutSessionCompleted(event: any) {
     .select("id, status")
     .maybeSingle();
 
-  if (purchaseErr) return;
+    if (purchaseErr) {
+      console.error("[Stripe webhook] Failed to upsert purchase", {
+        message: purchaseErr.message,
+        plugin_id,
+        buyer_id: buyer_id.slice(-8),
+        version_id
+      });
+      return;
+    }
 
-  if (!purchase?.id) return;
+    if (!purchase?.id) {
+      console.warn("[Stripe webhook] Upsert returned no purchase row", {
+        plugin_id,
+        buyer_id: buyer_id.slice(-8),
+        version_id
+      });
+      return;
+    }
 
-  // 2) Generate license key
-  const key = generateLicenseKey();
-  const { error: licenseErr } = await supabase.from("license_keys").insert({
-    purchase_id: purchase.id,
-    plugin_id,
-    buyer_id,
-    key,
-    is_active: true
-  });
-
-  if (licenseErr) return;
+  // 2) Issue license key record using the new licensing system.
+    const license = await issueLicense({
+      pluginId: plugin_id,
+      purchaseId: purchase.id,
+      buyerId: buyer_id
+    });
 
   // 3) Increment sales on plugin
   // Supabase JS can't "increment" without depending on RPC; do a safe fetch+update MVP.
@@ -90,32 +128,55 @@ async function handleCheckoutSessionCompleted(event: any) {
 
   // 4) Email confirmation (best-effort)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const downloadUrl = `${appUrl}/api/downloads/${key}/${plugin_id}`;
+  const downloadUrl = `${appUrl}/api/downloads/${license.key}/${plugin_id}`;
   const buyerDashboardUrl = `${appUrl}/account/licenses`;
 
-  const resend = getResend();
-  const fromEmail = process.env.RESEND_FROM_EMAIL;
-  if (!fromEmail) return;
+  try {
+    const resend = getResend();
+    const fromEmail = process.env.RESEND_FROM_EMAIL;
+    if (!fromEmail) return;
 
-  const { data: buyerAuthUser } = await supabase.auth.admin.getUserById(buyer_id);
-  const buyerEmail = buyerAuthUser?.email;
-  if (!buyerEmail) return;
+    const { data: buyerAuthUser } = await supabase.auth.admin.getUserById(buyer_id);
+    const buyerEmail = buyerAuthUser?.user?.email;
+    if (!buyerEmail) return;
 
-  const html = render(
-    PurchaseConfirmationEmail({
-      pluginName: plugin.name,
-      licenseKey: key,
-      downloadUrl,
-      buyerDashboardUrl
-    })
-  );
+    const { renderToStaticMarkup } = await import("react-dom/server");
 
-  await resend.emails.send({
-    from: fromEmail,
-    to: buyerEmail,
-    subject: `Your Plugdex purchase: ${plugin.name}`,
-    html
-  });
+    const doctype =
+      '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">';
+    const html =
+      doctype +
+      renderToStaticMarkup(
+        PurchaseConfirmationEmail({
+          pluginName: plugin.name,
+          licenseKey: license.key,
+          downloadUrl,
+          buyerDashboardUrl
+        })
+      );
+
+    await resend.emails.send({
+      from: fromEmail,
+      to: buyerEmail,
+      subject: `Your MCMerchant purchase: ${plugin.name}`,
+      html
+    });
+  } catch (err) {
+    console.error("[Stripe webhook] Email confirmation failed (best-effort)", {
+      plugin_id,
+      buyer_id: buyer_id ? buyer_id.slice(-8) : null,
+      version_id,
+      error: err instanceof Error ? err.message : String(err)
+    });
+  }
+  } catch (err) {
+    console.error("[Stripe webhook] Failed processing checkout.session.completed", {
+      plugin_id,
+      buyer_id: buyer_id ? buyer_id.slice(-8) : null,
+      version_id,
+      error: err instanceof Error ? err.message : String(err)
+    });
+  }
 }
 
 async function handleAccountUpdated(event: any) {

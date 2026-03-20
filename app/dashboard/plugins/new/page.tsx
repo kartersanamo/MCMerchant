@@ -105,7 +105,7 @@ export default function NewPluginPage() {
       }
     }
 
-    router.push(`/dashboard/plugins/${pluginId}/edit`);
+    router.push(`/dashboard/plugins/${pluginId}/edit?tab=${hasFirstVersion ? "versions" : "info"}`);
     setSubmitting(false);
   }
 
@@ -301,7 +301,11 @@ export default function NewPluginPage() {
         <div>
           <label className="block text-sm text-gray-300">Description (Markdown)</label>
           <div className="mt-2">
-            <MDEditor value={description} onChange={setDescription} height={300} />
+            <MDEditor
+              value={description}
+              onChange={(v) => setDescription(String(v ?? ""))}
+              height={300}
+            />
           </div>
         </div>
 

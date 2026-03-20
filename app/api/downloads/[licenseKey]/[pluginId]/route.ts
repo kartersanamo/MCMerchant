@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { verifyLicense } from "@/lib/licensing/verify";
+import type { VerifyRequest } from "@/lib/licensing/types";
 
 export async function GET(
   request: Request,
@@ -22,18 +24,26 @@ export async function GET(
     }
   }
 
-  const { data: license } = await supabase
-    .from("license_keys")
-    .select("id, is_active, plugin_id")
-    .eq("key", licenseKey)
-    .eq("plugin_id", pluginId)
-    .eq("is_active", true)
-    .maybeSingle();
+  if (licenseKey !== "free") {
+    const ipHeader =
+      request.headers.get("x-real-ip") ||
+      request.headers.get("x-forwarded-for")?.split(",")[0] ||
+      "";
+    const clientIp = ipHeader || "0.0.0.0";
 
-  if (licenseKey === "free") {
-    // Skip license check; free plugins are allowed above.
-  } else if (!license) {
-    return NextResponse.json({ error: "invalid_license" }, { status: 403 });
+    const verifyReq: VerifyRequest = {
+      license_key: licenseKey,
+      plugin_id: pluginId,
+      server_ip: clientIp,
+    };
+
+    const verifyRes = await verifyLicense(supabase, verifyReq, clientIp);
+    if (!verifyRes.valid) {
+      return NextResponse.json(
+        { error: "invalid_license", reason: verifyRes.reason, result: verifyRes.result },
+        { status: 403 }
+      );
+    }
   }
 
   let fileUrl: string | null = null;

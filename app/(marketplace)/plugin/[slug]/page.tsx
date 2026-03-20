@@ -154,9 +154,16 @@ export default async function PluginPage({
               <div>
                 <div className="text-sm text-gray-300">
                   by{" "}
-                  <Link href="#" className="text-brand-400 hover:underline">
-                    {sellerUsername}
-                  </Link>
+                  {sellerUsername !== "Unknown" ? (
+                    <Link
+                      href={`/store/${encodeURIComponent(sellerUsername)}`}
+                      className="text-brand-400 hover:underline"
+                    >
+                      {sellerUsername}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-200">{sellerUsername}</span>
+                  )}
                 </div>
                 <h1 className="mt-1 text-3xl font-semibold text-gray-50">
                   {plugin.name}

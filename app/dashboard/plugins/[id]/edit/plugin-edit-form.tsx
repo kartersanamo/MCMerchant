@@ -20,30 +20,12 @@ type Plugin = {
   cover_image_url: string | null;
 };
 
-type Version = {
-  id: string;
-  version: string;
-  changelog: string | null;
-  minecraft_versions: string[];
-  created_at: string;
-  download_count: number | null;
-  is_latest: boolean;
-};
-
-function formatDate(input: string) {
-  const d = new Date(input);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
 export function PluginEditForm({
   accountName,
   plugin,
-  versions,
 }: {
   accountName: string;
   plugin: Plugin;
-  versions: Version[];
 }) {
   const router = useRouter();
   const [name, setName] = useState(plugin.name);
@@ -105,7 +87,7 @@ export function PluginEditForm({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div>
       <Link
         href="/dashboard/plugins"
         className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-200"
@@ -276,89 +258,6 @@ export function PluginEditForm({
               )}
             </div>
           </div>
-        </section>
-
-        <section className="rounded-2xl border border-gray-800/80 bg-gray-900/40 p-6 shadow-lg shadow-black/20">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
-              Versions
-            </h2>
-            <Link
-              href={`/dashboard/plugins/${plugin.id}/versions`}
-              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-gray-950 transition hover:brightness-110"
-            >
-              Add version
-            </Link>
-          </div>
-
-          {versions.length === 0 ? (
-            <div className="mt-6 rounded-xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center">
-              <p className="text-sm text-gray-400">No versions yet.</p>
-              <p className="mt-1 text-xs text-gray-500">Buyers need at least one version to download.</p>
-              <Link
-                href={`/dashboard/plugins/${plugin.id}/versions`}
-                className="mt-4 inline-block rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm text-gray-200 hover:border-gray-600"
-              >
-                Upload first version
-              </Link>
-            </div>
-          ) : (
-            <ul className="mt-6 space-y-3">
-              {versions.map((v) => (
-                <li
-                  key={v.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-800 bg-gray-950/50 p-4 transition hover:border-gray-700"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-100">v{v.version}</span>
-                      {v.is_latest && (
-                        <span className="rounded-full bg-brand-500/20 px-2 py-0.5 text-xs font-medium text-brand-300 ring-1 ring-brand-500/30">
-                          Latest
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                      <span>{(v.download_count ?? 0).toLocaleString()} downloads</span>
-                      <span>{formatDate(v.created_at)}</span>
-                      {v.minecraft_versions?.length ? (
-                        <span className="flex flex-wrap gap-1">
-                          {v.minecraft_versions.slice(0, 3).map((mv) => (
-                            <span
-                              key={mv}
-                              className="rounded bg-gray-800 px-1.5 py-0.5 text-gray-400"
-                            >
-                              {mv}
-                            </span>
-                          ))}
-                          {v.minecraft_versions.length > 3 && (
-                            <span className="text-gray-500">+{v.minecraft_versions.length - 3}</span>
-                          )}
-                        </span>
-                      ) : null}
-                    </div>
-                    {v.changelog && (
-                      <p className="mt-2 line-clamp-2 text-sm text-gray-400">{v.changelog}</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Link
-                      href={`/dashboard/plugins/${plugin.id}/versions`}
-                      className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-200 hover:border-gray-600"
-                    >
-                      Add version
-                    </Link>
-                    <Link
-                      href={`/plugin/${plugin.slug}`}
-                      className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-200 hover:border-gray-600"
-                    >
-                      View
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
 
         <section className="rounded-2xl border border-gray-800/80 bg-gray-900/40 p-6 shadow-lg shadow-black/20">

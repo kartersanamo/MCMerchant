@@ -1,13 +1,11 @@
 import * as React from "react";
-import {
-  Button,
-  Container,
-  Heading,
-  Hr,
-  Link,
-  Section,
-  Text
-} from "@react-email/components";
+import { Button } from "@react-email/button";
+import { Container } from "@react-email/container";
+import { Heading } from "@react-email/heading";
+import { Hr } from "@react-email/hr";
+import { Link } from "@react-email/link";
+import { Section } from "@react-email/section";
+import { Text } from "@react-email/text";
 
 export type PurchaseConfirmationEmailProps = {
   pluginName: string;
@@ -24,7 +22,7 @@ export default function PurchaseConfirmationEmail({
 }: PurchaseConfirmationEmailProps) {
   return (
     <Container>
-      <Heading>Your Plugdex purchase: {pluginName}</Heading>
+      <Heading>Your MCMerchant purchase: {pluginName}</Heading>
       <Section>
         <Text>Thanks for your purchase! Your license key:</Text>
         <Text

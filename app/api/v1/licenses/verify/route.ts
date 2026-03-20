@@ -1,58 +1,93 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { verifyLicense } from "@/lib/licensing/verify";
+import type { VerifyRequest } from "@/lib/licensing/types";
+
+type RateEntry = { count: number; resetAt: number };
+const rateLimitMap = new Map<string, RateEntry>();
+const RATE_LIMIT = 60;
+const RATE_WINDOW_MS = 60 * 1000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
 
 export async function POST(request: Request) {
+  const ipHeader =
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0] ||
+    "";
+  const clientIp = ipHeader || "0.0.0.0";
+
+  if (!checkRateLimit(clientIp)) {
+    return NextResponse.json(
+      {
+        valid: false,
+        result: "rate_limited",
+        reason: "Too many requests. Please slow down.",
+      },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
+  }
+
+  let body: VerifyRequest | null = null;
   try {
-    const body = await request.json().catch(() => null);
-    const { license_key, plugin_id, server_ip } = body ?? {};
+    body = await request.json().catch(() => null);
+  } catch {
+    // fall through
+  }
 
-    if (!license_key || !plugin_id) {
-      return NextResponse.json(
-        { valid: false, reason: "missing_parameters" },
-        { status: 400 }
-      );
-    }
+  const { license_key, plugin_id } = body ?? {};
+  if (!license_key || !plugin_id) {
+    return NextResponse.json(
+      {
+        valid: false,
+        result: "denied_invalid",
+        reason: "license_key and plugin_id are required",
+      },
+      { status: 400 }
+    );
+  }
 
+  const keyPattern = /^PDEX-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+  if (!keyPattern.test(license_key)) {
+    return NextResponse.json(
+      {
+        valid: false,
+        result: "denied_invalid",
+        reason: "Malformed license key",
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
     const supabase = createSupabaseServerClient();
-
-    const { data: license, error } = await supabase
-      .from("license_keys")
-      .select("id, key, plugin_id, buyer_id, server_ip, is_active")
-      .eq("key", license_key)
-      .eq("plugin_id", plugin_id)
-      .maybeSingle();
-
-    if (error || !license) {
-      return NextResponse.json(
-        { valid: false, reason: "license_not_found" },
-        { status: 200 }
-      );
-    }
-
-    if (!license.is_active) {
-      return NextResponse.json(
-        { valid: false, reason: "license_inactive" },
-        { status: 200 }
-      );
-    }
-
-    if (server_ip && license.server_ip && license.server_ip !== server_ip) {
-      return NextResponse.json(
-        { valid: false, reason: "ip_mismatch" },
-        { status: 200 }
-      );
-    }
-
-    await supabase
-      .from("license_keys")
-      .update({ last_verified_at: new Date().toISOString() })
-      .eq("id", license.id);
-
-    return NextResponse.json({ valid: true }, { status: 200 });
+    const result = await verifyLicense(supabase, body as VerifyRequest, clientIp);
+    const status = result.valid ? 200 : 403;
+    return NextResponse.json(result, {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+        "X-MCMerchant-Version": "1",
+      },
+    });
   } catch {
     return NextResponse.json(
-      { valid: false, reason: "internal_error" },
-      { status: 200 }
+      {
+        valid: false,
+        result: "error",
+        reason: "Internal server error. Try again later.",
+      },
+      { status: 500 }
     );
   }
 }

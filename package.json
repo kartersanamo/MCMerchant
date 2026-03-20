@@ -1,5 +1,5 @@
 {
-  "name": "plugdex",
+  "name": "MCMerchant",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -10,8 +10,15 @@
     "webhooks:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
   },
   "dependencies": {
-    "@react-email/render": "^0.0.15",
+    "@react-email/button": "^0.2.1",
     "@react-email/components": "^0.0.7",
+    "@react-email/container": "^0.0.16",
+    "@react-email/heading": "^0.0.16",
+    "@react-email/hr": "^0.0.12",
+    "@react-email/link": "^0.0.13",
+    "@react-email/render": "^0.0.15",
+    "@react-email/section": "^0.0.17",
+    "@react-email/text": "^0.1.6",
     "@stripe/stripe-js": "^5.0.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.0.0",
@@ -35,4 +42,3 @@
     "typescript": "^5.0.0"
   }
 }
-

@@ -30,7 +30,7 @@ export default async function NewVersionSelectPluginPage() {
           (plugins ?? []).map((p: { id: string; slug: string; name: string; status: string }) => (
             <Link
               key={p.id}
-              href={`/dashboard/plugins/${p.id}/versions`}
+              href={`/dashboard/plugins/${p.id}/edit?tab=versions`}
               className="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900/30 p-4 transition hover:border-gray-700 hover:bg-gray-900/50"
             >
               <div>

@@ -39,7 +39,8 @@ export function VersionUploader({ pluginId }: { pluginId: string }) {
       return;
     }
 
-    router.push(`/dashboard/plugins/${pluginId}/edit`);
+    // Stay on the plugin edit page and switch to the Versions tab.
+    router.push(`/dashboard/plugins/${pluginId}/edit?tab=versions`);
   }
 
   return (

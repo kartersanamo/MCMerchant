@@ -15,11 +15,11 @@ export function createSupabaseServerClient() {
 
   return createServerClient(supabaseUrl, serviceRoleKey, {
     cookies: {
-      get: (name) => getCookie(name),
-      set: (name, value, options) => {
+      get: (name: string) => getCookie(name),
+      set: (name: string, value: string, options: any) => {
         cookies().set({ name, value, ...(options ?? {}) });
       },
-      remove: (name, options) => {
+      remove: (name: string, options: any) => {
         // Supabase expects cookie removal; setting an expired cookie is sufficient for MVP.
         cookies().set({
           name,

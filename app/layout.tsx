@@ -4,16 +4,18 @@ import { getAuthedUser } from "@/lib/supabase/server";
 import { SiteHeader } from "../components/site-header";
 import { SiteFooter } from "../components/site-footer";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
-    default: "Plugdex",
-    template: "%s | Plugdex"
+    default: "MCMerchant",
+    template: "%s | MCMerchant"
   },
-  description: "The plugin marketplace built for Minecraft developers",
+  description: "The marketplace + licensing + updater channel for Minecraft plugin developers.",
   icons: {
-    icon: "/PlugdexMono.png",
-    shortcut: "/PlugdexMono.png",
-    apple: "/PlugdexMono.png",
+    icon: "/MCMerchantMono.png",
+    shortcut: "/MCMerchantMono.png",
+    apple: "/MCMerchantMono.png",
   },
 };
 

@@ -10,23 +10,39 @@ export function SiteHeader({ authedUser }: { authedUser: AuthedUser | null }) {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
         <Link href="/" className="flex items-center gap-2">
           <Image
-            src="/PlugdexMono.png"
-            alt="Plugdex"
+            src="/MCMerchantMono.png"
+            alt="MCMerchant"
             width={36}
             height={36}
             className="h-9 w-auto"
             priority
           />
-          <span className="text-sm font-semibold text-gray-50">Plugdex</span>
+          <span className="text-sm font-semibold text-gray-50">MCMerchant</span>
         </Link>
 
-        <nav className="flex items-center gap-5 text-sm text-gray-300">
-          <Link href="/browse" className="hover:text-gray-100">
-            Plugins
+        <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-300">
+          <Link href="/browse" className="hover:text-gray-100" title="Marketplace catalog">
+            Marketplace
+          </Link>
+          <Link href="/docs/loader" className="hover:text-gray-100">
+            Loader
+          </Link>
+          {authedUser ? (
+            <Link href="/account/licenses" className="hover:text-gray-100">
+              Licenses
+            </Link>
+          ) : null}
+          <Link href="/docs" className="hover:text-gray-100">
+            Docs
           </Link>
           <Link href="/dashboard" className="hover:text-gray-100">
             Dashboard
           </Link>
+          {authedUser ? (
+            <Link href="/dashboard/storefront" className="hover:text-gray-100">
+              Storefront
+            </Link>
+          ) : null}
         </nav>
 
         <div className="flex items-center gap-3 text-sm">

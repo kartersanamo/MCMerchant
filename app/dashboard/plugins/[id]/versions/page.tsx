@@ -1,17 +1,11 @@
-import { VersionUploader } from "@/components/version-uploader";
+import { redirect } from "next/navigation";
+import { getAuthedUserId } from "@/lib/supabase/server";
 
-export default function PluginVersionsPage({ params }: { params: { id: string } }) {
-  return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-10">
-      <h1 className="text-2xl font-semibold text-gray-100">Upload new version</h1>
-      <p className="mt-2 text-sm text-gray-400">
-        MVP: .jar upload + version metadata. Store jar files in private Supabase bucket and mark this as latest.
-      </p>
+export default async function PluginVersionsPage({ params }: { params: { id: string } }) {
+  const userId = await getAuthedUserId();
+  if (!userId) return null;
 
-      <div className="mt-6">
-        <VersionUploader pluginId={params.id} />
-      </div>
-    </div>
-  );
+  // Backwards-compatible redirect: versions are managed on the plugin edit page.
+  redirect(`/dashboard/plugins/${params.id}/edit?tab=versions`);
 }
 

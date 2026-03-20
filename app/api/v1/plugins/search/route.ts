@@ -41,11 +41,26 @@ export async function GET(request: Request) {
   // Latest version filters: Minecraft version(s) and/or server platform(s).
   let compatiblePluginIds = new Set(pluginIds);
   if (minecraftVersions.length > 0 || serverPlatforms.length > 0) {
-    const { data: versions } = await supabase
-      .from("plugin_versions")
-      .select("plugin_id, minecraft_versions, server_platform")
-      .eq("is_latest", true)
-      .in("plugin_id", pluginIds);
+    let versions: any[] = [];
+    let hasServerPlatformColumn = true;
+
+    try {
+      const { data } = await supabase
+        .from("plugin_versions")
+        .select("plugin_id, minecraft_versions, server_platform")
+        .eq("is_latest", true)
+        .in("plugin_id", pluginIds);
+      versions = data ?? [];
+    } catch {
+      // If the schema doesn't have `server_platform` yet, fall back to mc-only matching.
+      hasServerPlatformColumn = false;
+      const { data } = await supabase
+        .from("plugin_versions")
+        .select("plugin_id, minecraft_versions")
+        .eq("is_latest", true)
+        .in("plugin_id", pluginIds);
+      versions = data ?? [];
+    }
 
     const compat = new Set<string>();
     (versions ?? []).forEach((v: any) => {
@@ -57,9 +72,13 @@ export async function GET(request: Request) {
           : [];
       const matchesMc =
         minecraftVersions.length === 0 || minecraftVersions.some((mv) => mcList.includes(mv));
-      const vPlatform = v.server_platform ? String(v.server_platform).trim() : "";
-      const matchesPlatform =
-        serverPlatforms.length === 0 || (vPlatform && serverPlatforms.includes(vPlatform));
+      const matchesPlatform = (() => {
+        if (!hasServerPlatformColumn) return true; // can't filter without the column
+        if (serverPlatforms.length === 0) return true;
+        const vPlatform = v.server_platform ? String(v.server_platform).trim() : "";
+        return vPlatform && serverPlatforms.includes(vPlatform);
+      })();
+
       if (matchesMc && matchesPlatform) compat.add(v.plugin_id);
     });
     compatiblePluginIds = compat;

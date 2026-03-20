@@ -21,7 +21,7 @@ export async function PATCH(
 
     const { data: existing } = await supabase
       .from("plugins")
-      .select("id, seller_id")
+      .select("id, seller_id, slug")
       .eq("id", params.id)
       .maybeSingle();
 

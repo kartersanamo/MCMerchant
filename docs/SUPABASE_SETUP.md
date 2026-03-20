@@ -1,6 +1,8 @@
-# Supabase setup for Plugdex
+# Supabase setup for MCMerchant
 
 After creating your Supabase project and running the database schema (see the main prompt), do the following.
+
+**Developer storefronts:** optional columns on `profiles` (branding, vanity URLs, custom domain fields) are documented in [STOREFRONT_PLATFORM.md](./STOREFRONT_PLATFORM.md).
 
 ## 1. Create Storage buckets
 
