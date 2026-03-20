@@ -1,5 +1,5 @@
 {
-  "name": "MCMerchant",
+  "name": "mcmerchant",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "webhooks:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
+    "webhooks:listen": "bash -lc 'set -a; [ -f .env ] && source .env; [ -f .env.local ] && source .env.local; set +a; docker run --rm --name mcmerchant-stripe-listener --network host -e STRIPE_API_KEY=\"$STRIPE_SECRET_KEY\" stripe/stripe-cli:latest listen --forward-to localhost:3000/api/webhooks/stripe'"
   },
   "dependencies": {
     "@react-email/button": "^0.2.1",

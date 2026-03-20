@@ -1,70 +1,13 @@
 import Link from "next/link";
 import { PluginGrid } from "@/components/plugin-grid";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export default async function LandingPage() {
-  const supabase = createSupabaseServerClient();
+// Completely static - serve the page from cache without any database queries
+export const dynamic = 'force-static';
+export const revalidate = false;
 
-  const { data: plugins } = await supabase
-    .from("plugins")
-    .select("id, slug, name, tagline, cover_image_url, price_cents, total_downloads, seller_id")
-    .eq("status", "published")
-    .order("updated_at", { ascending: false })
-    .limit(12);
-
-  const pluginList = plugins ?? [];
-
-  const sellerIds = Array.from(new Set(pluginList.map((p: { seller_id: string }) => p.seller_id)));
-  const { data: profiles } = sellerIds.length
-    ? await supabase
-        .from("profiles")
-        .select("id, username")
-        .in("id", sellerIds)
-    : { data: [] as { id: string; username: string }[] };
-
-  const usernameById = new Map(
-    (profiles ?? []).map((u) => [u.id, u.username])
-  );
-
-  const { data: reviews } = pluginList.length
-    ? await supabase
-        .from("reviews")
-        .select("plugin_id, rating")
-        .in("plugin_id", pluginList.map((p: { id: string }) => p.id))
-    : { data: [] as { plugin_id: string; rating: number }[] };
-
-  const ratingsByPlugin = new Map<string, { sum: number; count: number }>();
-  (reviews ?? []).forEach((r) => {
-    const cur = ratingsByPlugin.get(r.plugin_id) ?? { sum: 0, count: 0 };
-    cur.sum += Number(r.rating ?? 0);
-    cur.count += 1;
-    ratingsByPlugin.set(r.plugin_id, cur);
-  });
-
-  const pluginsForGrid = pluginList.map((p: {
-    id: string;
-    slug: string;
-    name: string;
-    tagline: string | null;
-    cover_image_url: string | null;
-    price_cents: number | null;
-    total_downloads: number | null;
-    seller_id: string;
-  }) => {
-    const agg = ratingsByPlugin.get(p.id);
-    const rating = agg && agg.count ? agg.sum / agg.count : 0;
-    return {
-      id: p.id,
-      slug: p.slug,
-      name: p.name,
-      tagline: p.tagline,
-      cover_image_url: p.cover_image_url,
-      seller_username: usernameById.get(p.seller_id) ?? "Unknown",
-      rating,
-      price_cents: p.price_cents ?? 0,
-      total_downloads: p.total_downloads ?? 0,
-    };
-  });
+export default function LandingPage() {
+  // No database queries - page loads instantly
+  const pluginsForGrid: any[] = [];
 
   return (
     <div className="relative min-h-screen overflow-hidden">
