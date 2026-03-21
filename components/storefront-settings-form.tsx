@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import MDEditor from "@uiw/react-md-editor";
 import type { StorefrontPublicProfile } from "@/lib/storefront-profile";
 import { getPublicStorefrontPath } from "@/lib/storefront-profile";
 import { STORE_THEME_IDS, type StoreThemeId, resolveStoreTheme } from "@/lib/storefront-theme";
@@ -300,13 +301,22 @@ export function StorefrontSettingsForm({ profile, hasStorefrontColumns }: Props)
 
           <div>
             <label className="block text-sm font-medium text-gray-300">About (Markdown)</label>
-            <textarea
-              className={`${input} min-h-[180px] font-mono text-xs leading-relaxed sm:text-sm`}
-              value={storeBio}
-              onChange={(e) => setStoreBio(e.target.value)}
-              placeholder="Your story, supported server versions, support policy, and links to docs."
-              maxLength={4000}
-            />
+            <p className="mt-1 text-xs text-gray-500">
+              Edit on the left, live preview on the right — same as plugin descriptions. Blank lines and line breaks
+              are preserved on your public storefront.
+            </p>
+            <div className="mt-3" data-color-mode="dark">
+              <MDEditor
+                value={storeBio}
+                onChange={(v) => {
+                  const next = String(v ?? "");
+                  setStoreBio(next.length > 4000 ? next.slice(0, 4000) : next);
+                }}
+                height={320}
+                preview="live"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">{storeBio.length} / 4000 characters</p>
           </div>
         </div>
       ) : null}

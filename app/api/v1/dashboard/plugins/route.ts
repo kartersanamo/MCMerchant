@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
+import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 
 function parseTags(input: string) {
   return input
@@ -12,9 +11,9 @@ function parseTags(input: string) {
 
 export async function POST(request: Request) {
   try {
-    const gate = await requireVerifiedUserForApi();
+    const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
-    const { userId: sellerId } = gate;
+    const { supabase, userId: sellerId } = gate;
 
     const formData = await request.formData();
     const name = String(formData.get("name") ?? "");
@@ -33,8 +32,6 @@ export async function POST(request: Request) {
     if (!name || !slug || !tagline || !description) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
-
-    const supabase = createSupabaseServerClient();
 
     let coverImageUrl: string | null = null;
     const coverFile = formData.get("cover_image");

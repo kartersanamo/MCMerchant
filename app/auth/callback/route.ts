@@ -5,8 +5,21 @@ import { sanitizeAuthNextParam } from "@/lib/auth/email-verification";
 
 export const dynamic = "force-dynamic";
 
+function redirectOrigin(requestUrl: URL): string {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (raw) {
+    try {
+      return new URL(raw.replace(/\/$/, "")).origin;
+    } catch {
+      // fall through
+    }
+  }
+  return requestUrl.origin;
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
+  const origin = redirectOrigin(requestUrl);
   const code = requestUrl.searchParams.get("code");
   const nextRaw = requestUrl.searchParams.get("next");
   const nextPath = sanitizeAuthNextParam(nextRaw, "/email-verified");
@@ -15,11 +28,11 @@ export async function GET(request: Request) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.redirect(new URL("/check-email?error=config", requestUrl.origin));
+    return NextResponse.redirect(new URL("/check-email?error=config", origin));
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL("/check-email?error=missing_code", requestUrl.origin));
+    return NextResponse.redirect(new URL("/check-email?error=missing_code", origin));
   }
 
   const cookieStore = cookies();
@@ -44,7 +57,7 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    const fail = new URL("/check-email", requestUrl.origin);
+    const fail = new URL("/check-email", origin);
     fail.searchParams.set("error", "callback_failed");
     fail.searchParams.set(
       "error_description",
@@ -53,5 +66,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(fail);
   }
 
-  return NextResponse.redirect(new URL(nextPath, requestUrl.origin));
+  return NextResponse.redirect(new URL(nextPath, origin));
 }

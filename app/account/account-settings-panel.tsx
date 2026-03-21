@@ -44,9 +44,7 @@ export function AccountSettingsPanel({
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailNotice, setEmailNotice] = useState<Notice>(null);
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [securitySaving, setSecuritySaving] = useState(false);
+  const [passwordLinkSending, setPasswordLinkSending] = useState(false);
   const [securityNotice, setSecurityNotice] = useState<Notice>(null);
 
   const [productUpdates, setProductUpdates] = useState(initialPrefs.productUpdates);
@@ -99,42 +97,60 @@ export function AccountSettingsPanel({
       return;
     }
     setEmailSaving(true);
-    const { error } = await supabase.auth.updateUser({ email: next });
-    if (error) {
-      setEmailNotice({ type: "err", text: error.message || "Could not request email change." });
-      setEmailSaving(false);
-      return;
+    try {
+      const res = await fetch("/api/auth/request-email-change", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email: next })
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) {
+        setEmailNotice({
+          type: "err",
+          text: data.error || "Could not request email change."
+        });
+        setEmailSaving(false);
+        return;
+      }
+      setEmailNotice({
+        type: "ok",
+        text:
+          data.message ||
+          "Check your new inbox for a confirmation link. You may also need to confirm from your current email."
+      });
+      setNewEmail("");
+    } catch {
+      setEmailNotice({ type: "err", text: "Network error. Try again." });
     }
-    setEmailNotice({
-      type: "ok",
-      text: "Email change requested. Check your inbox to confirm the new address."
-    });
-    setNewEmail("");
     setEmailSaving(false);
   }
 
-  async function savePassword(e: React.FormEvent) {
-    e.preventDefault();
+  async function sendPasswordChangeEmail() {
     setSecurityNotice(null);
-    if (password.length < 8) {
-      setSecurityNotice({ type: "err", text: "Password must be at least 8 characters." });
-      return;
+    setPasswordLinkSending(true);
+    try {
+      const res = await fetch("/api/auth/send-password-change-link", {
+        method: "POST",
+        credentials: "same-origin"
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) {
+        setSecurityNotice({
+          type: "err",
+          text: data.error || "Could not send password email."
+        });
+        setPasswordLinkSending(false);
+        return;
+      }
+      setSecurityNotice({
+        type: "ok",
+        text: data.message || "Check your email for a link to set a new password."
+      });
+    } catch {
+      setSecurityNotice({ type: "err", text: "Network error. Try again." });
     }
-    if (password !== confirmPassword) {
-      setSecurityNotice({ type: "err", text: "Passwords do not match." });
-      return;
-    }
-    setSecuritySaving(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      setSecurityNotice({ type: "err", text: error.message || "Could not update password." });
-      setSecuritySaving(false);
-      return;
-    }
-    setPassword("");
-    setConfirmPassword("");
-    setSecurityNotice({ type: "ok", text: "Password updated." });
-    setSecuritySaving(false);
+    setPasswordLinkSending(false);
   }
 
   async function savePreferences(e: React.FormEvent) {
@@ -233,43 +249,25 @@ export function AccountSettingsPanel({
 
       <section className="rounded-2xl border border-gray-800 bg-gray-900/30 p-6">
         <h2 className="text-lg font-semibold text-gray-100">Security</h2>
-        <p className="mt-1 text-sm text-gray-400">Use a strong password and rotate it regularly.</p>
-        <form onSubmit={savePassword} className="mt-5 space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">New password</label>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100"
-                placeholder="Minimum 8 characters"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">Confirm password</label>
-              <input
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                type="password"
-                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100"
-                placeholder="Re-enter password"
-              />
-            </div>
-          </div>
+        <p className="mt-1 text-sm text-gray-400">
+          We&apos;ll email you a secure link. Open it on this site, then enter your new password twice (minimum 8
+          characters; both fields must match).
+        </p>
+        <div className="mt-5 space-y-4">
           {securityNotice ? (
             <p className={securityNotice.type === "ok" ? "text-sm text-emerald-300" : "text-sm text-red-300"}>
               {securityNotice.text}
             </p>
           ) : null}
           <button
-            type="submit"
-            disabled={securitySaving}
+            type="button"
+            disabled={passwordLinkSending}
+            onClick={() => void sendPasswordChangeEmail()}
             className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 disabled:opacity-60"
           >
-            {securitySaving ? "Updating..." : "Update password"}
+            {passwordLinkSending ? "Sending…" : "Email me a password reset link"}
           </button>
-        </form>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-gray-800 bg-gray-900/30 p-6">

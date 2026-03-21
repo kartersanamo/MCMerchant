@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
+import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 
 function parseMinecraftVersions(input: string) {
   // Accept either comma-separated or already-comma-joined strings.
@@ -25,11 +25,9 @@ export async function PATCH(
   { params }: { params: { id: string; versionId: string } }
 ) {
   try {
-    const gate = await requireVerifiedUserForApi();
+    const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
-    const { userId: sellerId } = gate;
-
-    const supabase = createSupabaseServerClient();
+    const { supabase, userId: sellerId } = gate;
 
     const { data: plugin } = await supabase
       .from("plugins")
@@ -146,11 +144,9 @@ export async function DELETE(
   { params }: { params: { id: string; versionId: string } }
 ) {
   try {
-    const gate = await requireVerifiedUserForApi();
+    const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
-    const { userId: sellerId } = gate;
-
-    const supabase = createSupabaseServerClient();
+    const { supabase, userId: sellerId } = gate;
 
     const { data: plugin } = await supabase
       .from("plugins")
@@ -181,14 +177,22 @@ export async function DELETE(
       }
     }
 
-    // Clear purchase references that point to this specific version row.
-    const { error: purchasesRefClearErr } = await supabase
-      .from("purchases")
-      .update({ version_id: null })
-      .eq("version_id", params.versionId);
+    // Clear purchase references (bypasses RLS; avoids requiring broad UPDATE on purchases for sellers).
+    try {
+      const admin = createSupabaseServerClient();
+      const { error: purchasesRefClearErr } = await admin
+        .from("purchases")
+        .update({ version_id: null })
+        .eq("version_id", params.versionId);
 
-    if (purchasesRefClearErr) {
-      return NextResponse.json({ error: purchasesRefClearErr.message }, { status: 400 });
+      if (purchasesRefClearErr) {
+        return NextResponse.json({ error: purchasesRefClearErr.message }, { status: 400 });
+      }
+    } catch (e: any) {
+      return NextResponse.json(
+        { error: e?.message ?? "Server missing SUPABASE_SERVICE_ROLE_KEY for purchase cleanup." },
+        { status: 500 }
+      );
     }
 
     const { error: deleteErr } = await supabase

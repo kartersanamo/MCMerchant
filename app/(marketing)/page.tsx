@@ -91,7 +91,7 @@ export default function LandingPage() {
 {`curl -G "https://mcmmerchant.net/api/v1/plugins/<pluginId>/latest" \\
   -H "X-License-Key: <PDEX-XXXX-XXXX-XXXX-XXXX>" \\
   -H "X-Plugin-Version: 1.0.0" \\
-  -H "X-Minecraft-Version: 1.21.4" \\
+  -H "X-Minecraft-Version: 1.21.11" \\
   -H "X-Server-Software: Paper"`}
             </pre>
           </div>

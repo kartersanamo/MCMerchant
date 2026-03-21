@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
+import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 
 function parseMinecraftVersions(input: string) {
   return input
@@ -26,9 +25,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const gate = await requireVerifiedUserForApi();
+    const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
-    const { userId: sellerId } = gate;
+    const { supabase, userId: sellerId } = gate;
 
     const formData = await request.formData();
     const version = String(formData.get("version") ?? "");
@@ -61,8 +60,6 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    const supabase = createSupabaseServerClient();
 
     // Ensure plugin belongs to seller
     const { data: plugin } = await supabase

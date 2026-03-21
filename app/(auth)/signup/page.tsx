@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getEmailAuthCallbackUrl } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -22,8 +23,7 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
 
-    const origin = window.location.origin;
-    const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/email-verified")}`;
+    const emailRedirectTo = getEmailAuthCallbackUrl("/email-verified");
 
     const { data, error } = await supabase.auth.signUp({
       email,

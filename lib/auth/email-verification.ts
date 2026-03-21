@@ -1,5 +1,6 @@
-import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase/route-handler";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /** Supabase may set `email_confirmed_at` and/or legacy `confirmed_at`. */
@@ -31,6 +32,31 @@ export async function requireVerifiedUserForApi(): Promise<
     );
   }
   return { userId: data.user.id };
+}
+
+/**
+ * For dashboard routes that must respect Postgres RLS (`plugins`, `plugin_versions`, storage).
+ * Uses the anon key + session cookies so `auth.uid()` matches the seller in policies.
+ */
+export async function requireVerifiedUserForRlsApi(): Promise<
+  { supabase: SupabaseClient; userId: string } | NextResponse
+> {
+  const supabase = createSupabaseRouteHandlerClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user?.id) {
+    return NextResponse.json({ error: "unauthorized", code: "unauthorized" }, { status: 401 });
+  }
+  if (!userEmailIsVerified(data.user)) {
+    return NextResponse.json(
+      {
+        error: "email_not_verified",
+        code: "email_not_verified",
+        message: "Verify your email to use this feature."
+      },
+      { status: 403 }
+    );
+  }
+  return { supabase, userId: data.user.id };
 }
 
 /**

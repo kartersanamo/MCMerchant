@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
+import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 
 function parseTags(input: string) {
   return input
@@ -15,11 +14,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const gate = await requireVerifiedUserForApi();
+    const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
-    const { userId: sellerId } = gate;
-
-    const supabase = createSupabaseServerClient();
+    const { supabase, userId: sellerId } = gate;
 
     const { data: existing } = await supabase
       .from("plugins")

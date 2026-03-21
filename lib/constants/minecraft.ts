@@ -2,6 +2,13 @@
  * Predefined Minecraft versions for dropdowns (newest first).
  */
 export const MINECRAFT_VERSIONS = [
+  "1.21.11",
+  "1.21.10",
+  "1.21.9",
+  "1.21.8",
+  "1.21.7",
+  "1.21.6",
+  "1.21.5",
   "1.21.4",
   "1.21.3",
   "1.21.2",

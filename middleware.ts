@@ -39,6 +39,15 @@ function isAuthWall(pathname: string) {
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  // Supabase sometimes sends users to the project "Site URL" root with ?code=...
+  // Forward to the real OAuth callback route.
+  if (pathname === "/" && req.nextUrl.searchParams.has("code")) {
+    const callback = new URL(req.url);
+    callback.pathname = "/auth/callback";
+    return NextResponse.redirect(callback);
+  }
+
   const host = normalizeHost(req.headers.get("host"));
   const primaryHosts = getPrimaryHosts();
 

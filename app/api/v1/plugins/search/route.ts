@@ -11,26 +11,24 @@ export async function GET(request: Request) {
 
   const supabase = createSupabaseServerClient();
 
-  function applyCommonFilters<T extends any>(query: T): T {
-    let next = query;
+  const baseQuery = () => {
+    let query = supabase
+      .from("plugins")
+      .select("id, slug, name, tagline, cover_image_url, price_cents, total_downloads, seller_id, category")
+      .eq("status", "published")
+      .limit(30);
+
     if (categories.length > 0) {
-      next = next.in("category", categories);
+      query = query.in("category", categories);
     }
+
     const onlyFree = priceModes.length === 1 && priceModes[0] === "free";
     const onlyPaid = priceModes.length === 1 && priceModes[0] === "paid";
-    if (onlyFree) next = next.eq("price_cents", 0);
-    if (onlyPaid) next = next.gt("price_cents", 0);
-    return next;
-  }
+    if (onlyFree) query = query.eq("price_cents", 0);
+    if (onlyPaid) query = query.gt("price_cents", 0);
 
-  const baseQuery = () =>
-    applyCommonFilters(
-      supabase
-        .from("plugins")
-        .select("id, slug, name, tagline, cover_image_url, price_cents, total_downloads, seller_id, category")
-        .eq("status", "published")
-        .limit(30)
-    );
+    return query;
+  };
 
   const term = q.trim();
   let plugins: any[] = [];

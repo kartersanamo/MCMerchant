@@ -4,9 +4,16 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AccountSettingsPanel } from "./account-settings-panel";
 
-export default async function AccountPage() {
+type AccountPageProps = {
+  searchParams: Record<string, string | string[] | undefined>;
+};
+
+export default async function AccountPage({ searchParams }: AccountPageProps) {
   const user = await getAuthedUser();
   if (!user) redirect("/login?redirect=/account");
+
+  const noticeRaw = searchParams.notice;
+  const notice = typeof noticeRaw === "string" ? noticeRaw : Array.isArray(noticeRaw) ? noticeRaw[0] : undefined;
   const supabase = createSupabaseServerClient();
 
   const [{ data: profile }, { data: authData }] = await Promise.all([
@@ -30,6 +37,16 @@ export default async function AccountPage() {
       <Link href="/browse" className="text-sm text-gray-400 hover:text-gray-200">
         ← Back to browse
       </Link>
+      {notice === "password_updated" ? (
+        <div className="mt-4 rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 text-sm text-emerald-100/90">
+          Your password was updated successfully.
+        </div>
+      ) : null}
+      {notice === "email_change" ? (
+        <div className="mt-4 rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 text-sm text-emerald-100/90">
+          Email change confirmed. You&apos;re all set.
+        </div>
+      ) : null}
       {!user.emailVerified ? (
         <div className="mt-4 rounded-xl border border-amber-500/35 bg-amber-500/10 p-4 text-sm text-amber-100/90">
           <p className="font-medium text-amber-100">Email not verified</p>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { getEmailAuthCallbackUrl } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function CheckEmailClient() {
@@ -45,8 +46,7 @@ export function CheckEmailClient() {
     setResendState("sending");
     setResendMessage(null);
 
-    const origin = window.location.origin;
-    const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/email-verified")}`;
+    const emailRedirectTo = getEmailAuthCallbackUrl("/email-verified");
 
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
