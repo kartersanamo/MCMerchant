@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
 import {
+  getStorefrontHandle,
   isMissingColumnError,
   normalizeStoreSlug,
   STOREFRONT_PROFILE_EXTENDED
 } from "@/lib/storefront-profile";
 import { normalizeStoreThemeInput } from "@/lib/storefront-theme";
+import crypto from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -43,11 +46,30 @@ function sanitizeUrl(v: string | null): string | null {
   }
 }
 
-export async function PATCH(req: Request) {
-  const userId = await getAuthedUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+function normalizeCustomDomain(v: string | null): { domain: string | null; error?: string } {
+  if (!v) return { domain: null };
+  const d = v.trim().toLowerCase().replace(/\.$/, "");
+  if (!d) return { domain: null };
+  if (d.includes("://") || d.includes("/") || d.includes(":")) {
+    return { domain: null, error: "Custom domain must be a hostname only (for example: store.yourdomain.com)." };
   }
+  if (!d.includes(".")) {
+    return { domain: null, error: "Custom domain must include a valid TLD." };
+  }
+  if (d.startsWith("www.")) {
+    return { domain: null, error: "Use the exact hostname you want, for example store.yourdomain.com (not www)." };
+  }
+  const labelOk = d.split(".").every((p) => /^[a-z0-9-]+$/.test(p) && !p.startsWith("-") && !p.endsWith("-"));
+  if (!labelOk) {
+    return { domain: null, error: "Custom domain contains invalid characters." };
+  }
+  return { domain: d };
+}
+
+export async function PATCH(req: Request) {
+  const gate = await requireVerifiedUserForApi();
+  if (gate instanceof NextResponse) return gate;
+  const { userId } = gate;
 
   let body: PatchBody;
   try {
@@ -57,6 +79,27 @@ export async function PATCH(req: Request) {
   }
 
   const supabase = createSupabaseServerClient();
+  const { data: currentProfile, error: currentProfileError } = await supabase
+    .from("profiles")
+    .select("id, username, store_slug, custom_domain")
+    .eq("id", userId)
+    .maybeSingle();
+  if (currentProfileError) {
+    if (isMissingColumnError(currentProfileError)) {
+      return NextResponse.json(
+        {
+          error:
+            "Storefront columns are not in your database yet. Run the SQL in docs/STOREFRONT_PLATFORM.md.",
+          upgradeRequired: true
+        },
+        { status: 422 }
+      );
+    }
+    return NextResponse.json({ error: currentProfileError.message }, { status: 500 });
+  }
+  if (!currentProfile) {
+    return NextResponse.json({ error: "Profile not found for current user." }, { status: 404 });
+  }
 
   const payload: Record<string, string | null> = {};
 
@@ -74,7 +117,44 @@ export async function PATCH(req: Request) {
     payload.store_website_url = sanitizeUrl(t);
   }
   if ("custom_domain" in body) {
-    payload.custom_domain = trimOrNull(body.custom_domain, 200)?.toLowerCase() ?? null;
+    const parsed = normalizeCustomDomain(trimOrNull(body.custom_domain, 200));
+    if (parsed.error) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    if (parsed.domain) {
+      const appHosts = new Set<string>();
+      try {
+        const appBase = process.env.NEXT_PUBLIC_APP_URL;
+        if (appBase) appHosts.add(new URL(appBase).hostname.toLowerCase());
+      } catch {}
+      try {
+        const siteBase = process.env.NEXT_PUBLIC_SITE_URL;
+        if (siteBase) appHosts.add(new URL(siteBase).hostname.toLowerCase());
+      } catch {}
+      if (appHosts.has(parsed.domain)) {
+        return NextResponse.json(
+          { error: "Custom domain cannot be the same as your app domain." },
+          { status: 400 }
+        );
+      }
+      const { data: taken } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("custom_domain", parsed.domain)
+        .neq("id", userId)
+        .maybeSingle();
+      if (taken) {
+        return NextResponse.json({ error: "That custom domain is already claimed." }, { status: 409 });
+      }
+    }
+    const domainChanged = (currentProfile.custom_domain ?? null) !== parsed.domain;
+    payload.custom_domain = parsed.domain;
+    payload.custom_domain_status = parsed.domain ? (domainChanged ? "pending" : "pending") : null;
+    payload.custom_domain_verified_at = null;
+    payload.custom_domain_last_checked_at = null;
+    payload.custom_domain_verification_token = parsed.domain
+      ? crypto.createHash("sha256").update(`${userId}:${parsed.domain}`).digest("hex").slice(0, 32)
+      : null;
   }
   if ("store_banner_url" in body) {
     payload.store_banner_url = sanitizeUrl(trimOrNull(body.store_banner_url, 2000));
@@ -117,6 +197,16 @@ export async function PATCH(req: Request) {
       }
     }
     payload.store_slug = slugResult.slug;
+    if ((currentProfile.store_slug ?? null) !== slugResult.slug && currentProfile.custom_domain) {
+      payload.custom_domain_status = "pending";
+      payload.custom_domain_verified_at = null;
+      payload.custom_domain_last_checked_at = null;
+      payload.custom_domain_verification_token = crypto
+        .createHash("sha256")
+        .update(`${userId}:${currentProfile.custom_domain}:${slugResult.slug ?? currentProfile.username}`)
+        .digest("hex")
+        .slice(0, 32);
+    }
   }
 
   if (Object.keys(payload).length === 0) {

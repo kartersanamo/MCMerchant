@@ -11,7 +11,7 @@ export async function GET(
   const { licenseKey, pluginId } = params;
   const versionId = new URL(request.url).searchParams.get("versionId");
 
-  // MVP shortcut for free plugins.
+  // Shortcut for free plugins.
   if (licenseKey === "free") {
     const { data: plugin } = await supabase
       .from("plugins")

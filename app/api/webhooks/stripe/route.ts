@@ -112,7 +112,7 @@ async function handleCheckoutSessionCompleted(event: any) {
     });
 
   // 3) Increment sales on plugin
-  // Supabase JS can't "increment" without depending on RPC; do a safe fetch+update MVP.
+  // Supabase JS can't "increment" without depending on RPC; use a safe fetch+update.
   const { data: pluginRow } = await supabase
     .from("plugins")
     .select("total_sales")

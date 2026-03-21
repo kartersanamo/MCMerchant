@@ -223,7 +223,7 @@ export default function BrowsePage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search plugins by name or tagline..."
+              placeholder="Search by plugin name, tagline, or seller username..."
               className="w-full rounded-md border border-gray-800 bg-gray-950 px-3 py-2 text-gray-100 placeholder:text-gray-500"
             />
           </div>

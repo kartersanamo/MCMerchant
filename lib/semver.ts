@@ -1,7 +1,7 @@
 type SemverParts = { major: number; minor: number; patch: number };
 
 function parseSemver(input: string): SemverParts {
-  // MVP scope: accept "x.y.z" (optionally missing patch) and ignore pre-release/build.
+  // Accept "x.y.z" (optionally missing patch) and ignore pre-release/build.
   const [core] = input.split("+");
   const [base] = core.split("-");
   const parts = base.split(".");

@@ -17,7 +17,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Simple in-memory rate limiter (MVP).
+    // Simple in-memory rate limiter.
     const ip = getClientIp(request);
     const now = Date.now();
     const existing = rateBuckets.get(ip);
@@ -34,7 +34,7 @@ export async function GET(
     }
 
     const licenseKey = request.headers.get("X-License-Key");
-    // Current installed version for logging; MVP doesn't store it yet.
+    // Current installed version for logging; this route doesn't persist it.
     const pluginVersion = request.headers.get("X-Plugin-Version");
     void pluginVersion;
 
@@ -70,7 +70,7 @@ export async function GET(
       }
     }
 
-    // 3) Fetch candidate versions and pick max semver (MVP correctness).
+    // 3) Fetch candidate versions and pick max semver.
     const { data: versions, error: versionsErr } = await supabase
       .from("plugin_versions")
       .select("id, version, changelog, file_url, minecraft_versions, created_at")

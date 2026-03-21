@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Columns for public seller pages + dashboard (requires migration if missing). */
 export const STOREFRONT_PROFILE_EXTENDED =
-  "id, username, display_name, store_title, store_tagline, store_bio, store_website_url, store_slug, custom_domain, custom_domain_status, store_banner_url, store_icon_url, store_github_url, store_discord_url, store_twitter_url, store_theme";
+  "id, username, display_name, store_title, store_tagline, store_bio, store_website_url, store_slug, custom_domain, custom_domain_status, custom_domain_verification_token, custom_domain_verified_at, custom_domain_last_checked_at, store_banner_url, store_icon_url, store_github_url, store_discord_url, store_twitter_url, store_theme";
 
 export const STOREFRONT_PROFILE_BASIC = "id, username, display_name";
 
@@ -28,6 +28,9 @@ export type StorefrontPublicProfile = {
   store_slug?: string | null;
   custom_domain?: string | null;
   custom_domain_status?: string | null;
+  custom_domain_verification_token?: string | null;
+  custom_domain_verified_at?: string | null;
+  custom_domain_last_checked_at?: string | null;
   store_banner_url?: string | null;
   store_icon_url?: string | null;
   store_github_url?: string | null;
@@ -113,6 +116,12 @@ export function getPublicStorefrontPath(profile: StorefrontPublicProfile): strin
   const raw = profile.store_slug?.trim();
   const handle = raw && raw.length > 0 ? raw : profile.username;
   return `/store/${encodeURIComponent(handle)}`;
+}
+
+/** Route handle used by /store/[handle]. */
+export function getStorefrontHandle(profile: StorefrontPublicProfile): string {
+  const raw = profile.store_slug?.trim();
+  return raw && raw.length > 0 ? raw : profile.username;
 }
 
 const STORE_SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/;

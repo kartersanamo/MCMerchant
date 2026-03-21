@@ -98,7 +98,7 @@ async function flagLicense(
     })
     .eq("id", licenseId);
 
-  // Post‑MVP we’d notify seller/admins here.
+  // Future enhancement: notify seller/admins here.
   console.warn(`[AbuseDetection] License ${licenseId} suspended: ${reason}`);
 }
 

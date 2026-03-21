@@ -16,11 +16,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setNeedsEmailConfirmation(false);
 
     const timeoutId = setTimeout(() => {
       setError("Request timed out. Check your connection and try again.");
@@ -34,7 +36,24 @@ export default function LoginPage() {
       });
 
       if (error) {
+        const msg = (error.message ?? "").toLowerCase();
+        const code = (error as { code?: string }).code ?? "";
+        if (
+          code === "email_not_confirmed" ||
+          msg.includes("email not confirmed") ||
+          msg.includes("not confirmed")
+        ) {
+          setNeedsEmailConfirmation(true);
+          setError(
+            "Confirm your email before signing in. Check your inbox or resend the confirmation link."
+          );
+          setLoading(false);
+          clearTimeout(timeoutId);
+          return;
+        }
         setError(error.message);
+        setLoading(false);
+        clearTimeout(timeoutId);
         return;
       }
 
@@ -81,6 +100,17 @@ export default function LoginPage() {
         </div>
 
         {error ? <div className="text-sm text-red-400">{error}</div> : null}
+
+        {needsEmailConfirmation ? (
+          <div className="rounded-lg border border-brand-500/25 bg-brand-500/5 px-3 py-2 text-center text-sm">
+            <Link
+              href={`/check-email?email=${encodeURIComponent(email)}`}
+              className="font-medium text-brand-400 hover:underline"
+            >
+              Resend confirmation email
+            </Link>
+          </div>
+        ) : null}
 
         <button
           disabled={loading}

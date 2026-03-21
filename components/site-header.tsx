@@ -32,13 +32,21 @@ export function SiteHeader({ authedUser }: { authedUser: AuthedUser | null }) {
               Licenses
             </Link>
           ) : null}
+          {authedUser && !authedUser.emailVerified ? (
+            <Link
+              href={`/check-email?email=${encodeURIComponent(authedUser.email)}&reason=verify_email`}
+              className="text-amber-400/90 hover:text-amber-300"
+            >
+              Verify email
+            </Link>
+          ) : null}
           <Link href="/docs" className="hover:text-gray-100">
             Docs
           </Link>
           <Link href="/dashboard" className="hover:text-gray-100">
             Dashboard
           </Link>
-          {authedUser ? (
+          {authedUser?.emailVerified ? (
             <Link href="/dashboard/storefront" className="hover:text-gray-100">
               Storefront
             </Link>
@@ -48,7 +56,7 @@ export function SiteHeader({ authedUser }: { authedUser: AuthedUser | null }) {
         <div className="flex items-center gap-3 text-sm">
           {authedUser ? (
             <>
-              <AddDropdown />
+              {authedUser.emailVerified ? <AddDropdown /> : null}
               <AccountDropdown user={authedUser} />
             </>
           ) : (

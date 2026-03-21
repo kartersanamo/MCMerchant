@@ -20,7 +20,7 @@ export function createSupabaseServerClient() {
         cookies().set({ name, value, ...(options ?? {}) });
       },
       remove: (name: string, options: any) => {
-        // Supabase expects cookie removal; setting an expired cookie is sufficient for MVP.
+        // Supabase expects cookie removal; setting an expired cookie is sufficient.
         cookies().set({
           name,
           value: "",
@@ -43,6 +43,8 @@ export type AuthedUser = {
   id: string;
   email: string;
   displayName: string;
+  /** False when Supabase allows sign-in before email confirmation (project setting). */
+  emailVerified: boolean;
 };
 
 export async function getAuthedUser(): Promise<AuthedUser | null> {
@@ -51,6 +53,7 @@ export async function getAuthedUser(): Promise<AuthedUser | null> {
   if (authError || !authData.user) return null;
   const userId = authData.user.id;
   const email = authData.user.email ?? "";
+  const emailVerified = !!(authData.user.email_confirmed_at ?? authData.user.confirmed_at);
   const { data: profile } = await supabase
     .from("profiles")
     .select("username")
@@ -62,6 +65,6 @@ export async function getAuthedUser(): Promise<AuthedUser | null> {
     authData.user.user_metadata?.name ??
     email.split("@")[0] ??
     "User";
-  return { id: userId, email, displayName };
+  return { id: userId, email, displayName, emailVerified };
 }
 

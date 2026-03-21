@@ -75,7 +75,7 @@ export async function GET(request: Request) {
         }
       }
     ],
-    // Connect platform fee logic (MVP).
+    // Connect platform fee logic.
     payment_intent_data: {
       application_fee_amount: applicationFeeAmount,
       transfer_data: {

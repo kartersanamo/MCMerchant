@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
 
 function parseMinecraftVersions(input: string) {
   return input
@@ -25,8 +26,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const sellerId = await getAuthedUserId();
-    if (!sellerId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const gate = await requireVerifiedUserForApi();
+    if (gate instanceof NextResponse) return gate;
+    const { userId: sellerId } = gate;
 
     const formData = await request.formData();
     const version = String(formData.get("version") ?? "");

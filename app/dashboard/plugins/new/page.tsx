@@ -72,7 +72,13 @@ export default function NewPluginPage() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setSubmitError(data.error ?? "Failed to create plugin");
+      if (data.code === "email_not_verified") {
+        setSubmitError(
+          "Verify your email before publishing. Check your inbox or open the link from your confirmation email."
+        );
+      } else {
+        setSubmitError(data.message ?? data.error ?? "Failed to create plugin");
+      }
       setSubmitting(false);
       return;
     }
@@ -99,7 +105,13 @@ export default function NewPluginPage() {
 
       if (!versionRes.ok) {
         const errData = await versionRes.json().catch(() => ({}));
-        setSubmitError(errData.error ?? "Plugin created but version upload failed");
+        if (errData.code === "email_not_verified") {
+          setSubmitError(
+            "Verify your email before uploading versions. Check your inbox for the confirmation link."
+          );
+        } else {
+          setSubmitError(errData.message ?? errData.error ?? "Plugin created but version upload failed");
+        }
         setSubmitting(false);
         return;
       }
@@ -120,7 +132,7 @@ export default function NewPluginPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-10">
       <h1 className="text-2xl font-semibold text-gray-100">Create new plugin</h1>
-      <p className="mt-2 text-sm text-gray-400">MVP form. Cover image is stored in Supabase (public bucket).</p>
+      <p className="mt-2 text-sm text-gray-400">Create your listing and publish with complete storefront-ready metadata.</p>
 
       <div className="mt-6 space-y-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

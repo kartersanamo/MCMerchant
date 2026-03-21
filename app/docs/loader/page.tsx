@@ -14,15 +14,18 @@ const toc: DocsTocItem[] = [
   { id: "api-request", title: "API request headers", group: "How it works" },
   { id: "download", title: "Download, checksum, replace jar", group: "How it works" },
   { id: "troubleshooting", title: "Troubleshooting", group: "Troubleshooting" },
-  { id: "local-dev", title: "Local development checklist", group: "Troubleshooting" },
   { id: "faq", title: "FAQ", group: "Reference" }
 ];
 
 export default function LoaderDocsPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-10">
-      <div className="flex flex-col gap-6">
-        <div className="rounded-2xl border border-gray-800/80 bg-gradient-to-b from-brand-500/10 to-gray-950/20 p-8 shadow-lg shadow-black/20">
+    <div className="docs-theme relative mx-auto w-full max-w-6xl px-6 py-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(16,185,129,0.25),rgba(15,23,42,0))]"
+      />
+      <div className="flex flex-col gap-8">
+        <div className="docs-hero rounded-3xl border p-8 shadow-2xl">
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-300">Docs</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-50">
             MCMerchant Loader
@@ -73,12 +76,14 @@ export default function LoaderDocsPage() {
         </div>
 
         <div className="grid gap-8 md:grid-cols-12">
-          <div className="md:col-span-4 lg:col-span-3">
-            <DocsToc items={toc} defaultGroup="Getting started" title="On this page" />
+          <div className="md:col-span-4 md:self-start lg:col-span-3">
+            <div className="docs-toc-shell rounded-2xl border p-2">
+              <DocsToc items={toc} defaultGroup="Getting started" title="On this page" />
+            </div>
           </div>
 
           <div className="md:col-span-8 lg:col-span-9">
-            <div className="space-y-10">
+            <div className="docs-content space-y-10">
               <section id="overview" className="scroll-mt-28">
                 <h2 className="text-xl font-semibold text-gray-50">Overview</h2>
                 <p className="mt-2 text-sm text-gray-300">
@@ -341,7 +346,7 @@ X-Server-Software: {Bukkit.getName()}
                   <div className="rounded-xl border border-gray-800/80 bg-gray-950/30 p-5">
                     <p className="text-sm font-semibold text-gray-100">Network errors</p>
                     <p className="mt-2 text-sm text-gray-300">
-                      Verify <code>api-base-url</code> is reachable from your server. In local dev, set it to your localhost API and reload with <code>/pdex reload</code>.
+                      Verify your API URL is reachable from your server and that your connection is stable. After updating settings, run <code>/pdex reload</code>.
                     </p>
                   </div>
                   <div className="rounded-xl border border-gray-800/80 bg-gray-950/30 p-5">
@@ -351,23 +356,6 @@ X-Server-Software: {Bukkit.getName()}
                     </p>
                   </div>
                 </div>
-              </section>
-
-              <section id="local-dev" className="scroll-mt-28">
-                <h2 className="text-xl font-semibold text-gray-50">Local development checklist</h2>
-                <p className="mt-2 text-sm text-gray-300">
-                  When you run everything on localhost, configure URLs so the loader talks to your dev backend and admin links point to your dev UI.
-                </p>
-                <div className="mt-4 overflow-auto rounded-xl border border-gray-800/80 bg-black/30 p-4">
-                  <pre className="text-xs text-gray-200">
-                    <code>{`api-base-url: "http://localhost:3000/api"
-app-base-url: "http://localhost:3000"
-`}</code>
-                  </pre>
-                </div>
-                <p className="mt-3 text-sm text-gray-300">
-                  Then restart the loader (or run <code>/pdex reload</code>).
-                </p>
               </section>
 
               <section id="faq" className="scroll-mt-28">

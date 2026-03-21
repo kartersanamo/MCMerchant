@@ -36,7 +36,7 @@ export default async function RootLayout({
       <body className="min-h-screen">
         <SiteHeader authedUser={authedUser} />
         <main>{children}</main>
-        <SiteFooter authedUserId={authedUser?.id ?? null} />
+        <SiteFooter authedUser={authedUser} />
       </body>
     </html>
   );

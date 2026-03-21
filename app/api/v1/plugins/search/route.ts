@@ -11,27 +11,55 @@ export async function GET(request: Request) {
 
   const supabase = createSupabaseServerClient();
 
-  let query = supabase
-    .from("plugins")
-    .select("id, slug, name, tagline, cover_image_url, price_cents, total_downloads, seller_id, category")
-    .eq("status", "published")
-    .limit(30);
-
-  if (categories.length > 0) {
-    query = query.in("category", categories);
+  function applyCommonFilters<T extends any>(query: T): T {
+    let next = query;
+    if (categories.length > 0) {
+      next = next.in("category", categories);
+    }
+    const onlyFree = priceModes.length === 1 && priceModes[0] === "free";
+    const onlyPaid = priceModes.length === 1 && priceModes[0] === "paid";
+    if (onlyFree) next = next.eq("price_cents", 0);
+    if (onlyPaid) next = next.gt("price_cents", 0);
+    return next;
   }
 
-  const onlyFree = priceModes.length === 1 && priceModes[0] === "free";
-  const onlyPaid = priceModes.length === 1 && priceModes[0] === "paid";
-  if (onlyFree) query = query.eq("price_cents", 0);
-  if (onlyPaid) query = query.gt("price_cents", 0);
+  const baseQuery = () =>
+    applyCommonFilters(
+      supabase
+        .from("plugins")
+        .select("id, slug, name, tagline, cover_image_url, price_cents, total_downloads, seller_id, category")
+        .eq("status", "published")
+        .limit(30)
+    );
 
-  if (q.trim()) {
-    const like = `%${q.trim()}%`;
-    query = query.or(`name.ilike.${like},tagline.ilike.${like}`);
+  const term = q.trim();
+  let plugins: any[] = [];
+  let error: any = null;
+
+  if (!term) {
+    const res = await baseQuery();
+    plugins = res.data ?? [];
+    error = res.error;
+  } else {
+    const like = `%${term}%`;
+    const [{ data: nameMatches, error: nameError }, { data: sellerProfiles }] = await Promise.all([
+      baseQuery().or(`name.ilike.${like},tagline.ilike.${like}`),
+      supabase.from("profiles").select("id").ilike("username", like).limit(50)
+    ]);
+
+    const sellerIds = (sellerProfiles ?? []).map((p: any) => p.id).filter(Boolean);
+    let sellerPlugins: any[] = [];
+    if (sellerIds.length > 0) {
+      const sellerRes = await baseQuery().in("seller_id", sellerIds);
+      sellerPlugins = sellerRes.data ?? [];
+    }
+
+    const byId = new Map<string, any>();
+    [...(nameMatches ?? []), ...sellerPlugins].forEach((p: any) => byId.set(p.id, p));
+    plugins = Array.from(byId.values()).slice(0, 30);
+    error = nameError;
   }
 
-  const { data: plugins, error } = await query;
   if (error || !plugins) {
     return NextResponse.json({ plugins: [] }, { status: 200 });
   }
@@ -99,7 +127,7 @@ export async function GET(request: Request) {
     (profiles ?? []).map((u: any) => [u.id, u.username])
   );
 
-  // Rating (average of reviews) - MVP in JS.
+  // Rating (average of reviews) computed in route logic.
   const { data: reviews } = sellerIds.length
     ? await supabase
         .from("reviews")

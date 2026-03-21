@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
 
 export async function POST() {
-  const userId = await getAuthedUserId();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const gate = await requireVerifiedUserForApi();
+  if (gate instanceof NextResponse) return gate;
+  const { userId } = gate;
 
   const stripe = getStripe();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

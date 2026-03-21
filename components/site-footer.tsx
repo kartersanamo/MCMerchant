@@ -1,7 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { AuthedUser } from "@/lib/supabase/server";
 
-export function SiteFooter({ authedUserId }: { authedUserId: string | null }) {
+export function SiteFooter({ authedUser }: { authedUser: AuthedUser | null }) {
+  const sellerUnlocked = !!(authedUser?.emailVerified);
   return (
     <footer className="border-t border-gray-800 bg-gray-950/40">
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -35,10 +37,20 @@ export function SiteFooter({ authedUserId }: { authedUserId: string | null }) {
                       Dashboard
                     </Link>
                   </li>
-                  {authedUserId ? (
+                  {authedUser && sellerUnlocked ? (
                     <li>
                       <Link href="/dashboard/storefront" className="hover:text-gray-100">
                         Storefront
+                      </Link>
+                    </li>
+                  ) : null}
+                  {authedUser && !sellerUnlocked ? (
+                    <li>
+                      <Link
+                        href={`/check-email?email=${encodeURIComponent(authedUser.email)}&reason=verify_email`}
+                        className="text-amber-400/90 hover:text-amber-300"
+                      >
+                        Verify email to unlock seller tools
                       </Link>
                     </li>
                   ) : null}
@@ -49,22 +61,22 @@ export function SiteFooter({ authedUserId }: { authedUserId: string | null }) {
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">For developers</p>
                 <ul className="space-y-2 text-sm text-gray-300">
                   <li>
-                    <Link href="/docs#quickstart" className="hover:text-gray-100">
+                    <Link href="/docs/loader#overview" className="hover:text-gray-100">
                       Quick start
                     </Link>
                   </li>
                   <li>
-                    <Link href="/docs#config" className="hover:text-gray-100">
+                    <Link href="/docs/loader#config" className="hover:text-gray-100">
                       mcmerchant.yml config
                     </Link>
                   </li>
                   <li>
-                    <Link href="/docs#commands" className="hover:text-gray-100">
+                    <Link href="/docs/loader#commands" className="hover:text-gray-100">
                       Commands (/pdex)
                     </Link>
                   </li>
                   <li>
-                    <Link href="/docs#troubleshooting" className="hover:text-gray-100">
+                    <Link href="/docs/loader#troubleshooting" className="hover:text-gray-100">
                       Troubleshooting
                     </Link>
                   </li>
@@ -74,23 +86,38 @@ export function SiteFooter({ authedUserId }: { authedUserId: string | null }) {
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Seller workflow</p>
                 <ul className="space-y-2 text-sm text-gray-300">
+                  {sellerUnlocked ? (
+                    <>
+                      <li>
+                        <Link href="/dashboard/storefront" className="hover:text-gray-100">
+                          Storefront settings
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/plugins" className="hover:text-gray-100">
+                          Manage plugins
+                        </Link>
+                      </li>
+                    </>
+                  ) : authedUser ? (
+                    <li>
+                      <Link
+                        href={`/check-email?email=${encodeURIComponent(authedUser.email)}&reason=verify_email`}
+                        className="text-amber-400/90 hover:text-amber-300"
+                      >
+                        Verify email for seller tools
+                      </Link>
+                    </li>
+                  ) : (
+                    <li className="text-gray-500">Log in to manage plugins</li>
+                  )}
                   <li>
-                    <Link href="/dashboard/storefront" className="hover:text-gray-100">
-                      Storefront settings
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/dashboard/plugins" className="hover:text-gray-100">
-                      Manage plugins
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/docs#seller-versions" className="hover:text-gray-100">
+                    <Link href="/docs/for-sellers#versioning" className="hover:text-gray-100">
                       Managing versions
                     </Link>
                   </li>
                   <li>
-                    <Link href="/docs#release-checklist" className="hover:text-gray-100">
+                    <Link href="/docs/for-sellers#release-playbook" className="hover:text-gray-100">
                       Release checklist
                     </Link>
                   </li>
@@ -100,7 +127,7 @@ export function SiteFooter({ authedUserId }: { authedUserId: string | null }) {
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Account</p>
                 <ul className="space-y-2 text-sm text-gray-300">
-                  {authedUserId ? (
+                  {authedUser ? (
                     <li>
                       <Link href="/dashboard" className="hover:text-gray-100">
                         Go to dashboard
@@ -127,11 +154,11 @@ export function SiteFooter({ authedUserId }: { authedUserId: string | null }) {
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Need help?</p>
                 <p className="text-sm text-gray-300">
                   Start with{" "}
-                  <Link href="/docs#debug-console" className="underline underline-offset-4 hover:text-gray-100">
+                  <Link href="/docs/loader#troubleshooting" className="underline underline-offset-4 hover:text-gray-100">
                     debugging checklist
                   </Link>{" "}
                   or jump straight to{" "}
-                  <Link href="/docs#api" className="underline underline-offset-4 hover:text-gray-100">
+                  <Link href="/docs/loader#api-request" className="underline underline-offset-4 hover:text-gray-100">
                     API endpoint details
                   </Link>
                   .

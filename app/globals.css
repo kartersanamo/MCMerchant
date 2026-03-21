@@ -11,3 +11,49 @@ body {
   @apply bg-gray-950 text-gray-100;
 }
 
+.docs-theme .docs-hero {
+  @apply border-emerald-400/20 bg-gradient-to-b from-emerald-500/15 via-slate-900/70 to-slate-950/80;
+}
+
+.docs-theme .docs-toc-shell {
+  @apply border-slate-700/70 bg-slate-900/35 backdrop-blur;
+}
+
+.docs-theme .docs-content > section {
+  @apply rounded-2xl border border-slate-800/70 bg-gradient-to-b from-slate-900/65 to-slate-950/60 p-6 shadow-lg shadow-black/20;
+}
+
+.docs-theme .docs-content > section > h2 {
+  @apply bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent;
+}
+
+.docs-theme .docs-content p {
+  @apply leading-7 text-slate-200;
+}
+
+.docs-theme .docs-content ul,
+.docs-theme .docs-content ol {
+  @apply text-slate-200;
+}
+
+.docs-theme .docs-content code {
+  @apply rounded bg-slate-800/80 px-1 py-0.5 text-emerald-200;
+}
+
+.docs-theme .docs-content pre code {
+  @apply bg-transparent p-0 text-slate-100;
+}
+
+.docs-theme .docs-content pre {
+  @apply rounded-xl border border-slate-700/70 bg-slate-950/80;
+}
+
+.docs-theme .docs-content a {
+  @apply text-cyan-300 underline-offset-4 hover:text-cyan-200;
+}
+
+.docs-theme .docs-content > section > div,
+.docs-theme .docs-content > section details {
+  @apply border-slate-700/60 bg-slate-900/45;
+}
+

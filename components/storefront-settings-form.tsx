@@ -50,6 +50,7 @@ export function StorefrontSettingsForm({ profile, hasStorefrontColumns }: Props)
   const [customDomain, setCustomDomain] = useState(profile.custom_domain ?? "");
 
   const [saving, setSaving] = useState(false);
+  const [verifyingDomain, setVerifyingDomain] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,11 +87,19 @@ export function StorefrontSettingsForm({ profile, hasStorefrontColumns }: Props)
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(
-          typeof data.error === "string"
-            ? data.error
-            : "Could not save storefront. Check the console or try again."
-        );
+        if (data.code === "email_not_verified") {
+          setError(
+            typeof data.message === "string"
+              ? data.message
+              : "Verify your email before saving your storefront."
+          );
+        } else {
+          setError(
+            typeof data.error === "string"
+              ? data.error
+              : "Could not save storefront. Check the console or try again."
+          );
+        }
         setSaving(false);
         return;
       }
@@ -100,6 +109,31 @@ export function StorefrontSettingsForm({ profile, hasStorefrontColumns }: Props)
       setError("Network error while saving.");
     }
     setSaving(false);
+  }
+
+  async function verifyDomain() {
+    setVerifyingDomain(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/v1/dashboard/storefront/custom-domain/verify", {
+        method: "POST"
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setMessage("Custom domain verified. It should begin routing to your storefront shortly.");
+      } else if (res.status === 409) {
+        setError(
+          "DNS records were not fully detected yet. Confirm TXT and CNAME records, then try again."
+        );
+      } else {
+        setError(typeof data.error === "string" ? data.error : "Could not verify custom domain.");
+      }
+      router.refresh();
+    } catch {
+      setError("Network error while verifying custom domain.");
+    }
+    setVerifyingDomain(false);
   }
 
   const tabBtn = (id: TabId, label: string) => (
@@ -339,7 +373,7 @@ export function StorefrontSettingsForm({ profile, hasStorefrontColumns }: Props)
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300">Custom domain (roadmap)</label>
+            <label className="block text-sm font-medium text-gray-300">Custom domain</label>
             <input
               className={`${input} font-mono`}
               value={customDomain}
@@ -348,12 +382,49 @@ export function StorefrontSettingsForm({ profile, hasStorefrontColumns }: Props)
               maxLength={200}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Saved for later DNS verification. See <span className="font-mono">docs/STOREFRONT_PLATFORM.md</span>.
+              Enter only the hostname. Example: <span className="font-mono">store.kartersanamo.com</span>.
             </p>
             {profile.custom_domain_status ? (
               <p className="mt-2 text-xs text-gray-400">
                 Status: <span className="text-gray-200">{profile.custom_domain_status}</span>
               </p>
+            ) : null}
+            {customDomain.trim() ? (
+              <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-4 text-xs text-gray-400">
+                <p className="font-medium text-gray-300">DNS setup</p>
+                <p>
+                  1) Add CNAME: <span className="font-mono text-gray-200">{customDomain.trim()}</span> →{" "}
+                  <span className="font-mono text-gray-200">
+                    {(() => {
+                      try {
+                        return new URL(
+                          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+                        ).hostname;
+                      } catch {
+                        return "your-app-host";
+                      }
+                    })()}
+                  </span>
+                </p>
+                <p>
+                  2) Add TXT: <span className="font-mono text-gray-200">
+                    _mcmmerchant-challenge.{customDomain.trim()}
+                  </span>{" "}
+                  ={" "}
+                  <span className="font-mono text-gray-200">
+                    {profile.custom_domain_verification_token ?? "(save first to generate token)"}
+                  </span>
+                </p>
+                <p>3) Save storefront, wait for DNS propagation, then click verify.</p>
+                <button
+                  type="button"
+                  disabled={verifyingDomain}
+                  onClick={() => void verifyDomain()}
+                  className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 font-medium text-gray-200 hover:border-gray-600 disabled:opacity-60"
+                >
+                  {verifyingDomain ? "Verifying..." : "Verify custom domain"}
+                </button>
+              </div>
             ) : null}
           </div>
         </div>

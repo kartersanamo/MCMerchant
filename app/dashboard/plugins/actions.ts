@@ -1,11 +1,13 @@
 "use server";
 
-import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireVerifiedUserIdForAction } from "@/lib/auth/email-verification";
 import { revalidatePath } from "next/cache";
 
 export async function deletePlugin(pluginId: string): Promise<{ error?: string }> {
-  const userId = await getAuthedUserId();
-  if (!userId) return { error: "Unauthorized" };
+  const gate = await requireVerifiedUserIdForAction();
+  if ("error" in gate) return { error: gate.error };
+  const { userId } = gate;
 
   const supabase = createSupabaseServerClient();
 

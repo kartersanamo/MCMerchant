@@ -1,46 +1,49 @@
 import { NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { userEmailIsVerified } from "@/lib/auth/email-verification";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  // Owner-controlled jar location:
-  // - Override with `MCMERCHANT_LOADER_JAR_PATH`
-  // - Default: repo-local `mcmerchant-loader/target/MCMerchantLoader-1.0.0.jar` (served under the new download filename)
-  const jarPath =
-    process.env.MCMERCHANT_LOADER_JAR_PATH ??
-    path.join(process.cwd(), "mcmerchant-loader", "target", "MCMerchantLoader-1.0.0.jar");
-
-  const jarFilename =
-    process.env.MCMERCHANT_LOADER_JAR_FILENAME ?? "MCMerchantLoader-1.0.0.jar";
-
-  try {
-    await fs.promises.access(jarPath, fs.constants.R_OK);
-  } catch {
+  const supabase = createSupabaseServerClient();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user?.id) {
+    return NextResponse.json(
+      { error: "unauthorized", code: "unauthorized", message: "Log in to download the loader." },
+      { status: 401 }
+    );
+  }
+  if (!userEmailIsVerified(authData.user)) {
     return NextResponse.json(
       {
-        error: "loader_jar_not_found",
-        jarPath,
-        jarFilename,
-        hint:
-          "Set MCMERCHANT_LOADER_JAR_PATH (and optionally MCMERCHANT_LOADER_JAR_FILENAME) to point to the jar file you want to serve.",
+        error: "email_not_verified",
+        code: "email_not_verified",
+        message: "Verify your email to download MCMerchantLoader."
       },
-      { status: 404 }
+      { status: 403 }
     );
   }
 
-  const stat = await fs.promises.stat(jarPath);
-  const stream = fs.createReadStream(jarPath);
+  // Hosted loader download:
+  // - Override with `MCMERCHANT_LOADER_DOWNLOAD_URL`
+  // - Default: official GitHub release asset
+  const downloadUrl =
+    process.env.MCMERCHANT_LOADER_DOWNLOAD_URL ??
+    "https://github.com/kartersanamo/MCMerchant-Loader/releases/download/v1.0.0/MCMerchantLoader-1.0.0.jar";
 
-  return new NextResponse(stream as any, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/java-archive",
-      "Content-Disposition": `attachment; filename="${jarFilename}"`,
-      "Content-Length": String(stat.size),
-      "Cache-Control": "no-store",
-    },
-  });
+  try {
+    const target = new URL(downloadUrl);
+    return NextResponse.redirect(target, 307);
+  } catch {
+    return NextResponse.json(
+      {
+        error: "invalid_loader_download_url",
+        downloadUrl,
+        hint: "Set MCMERCHANT_LOADER_DOWNLOAD_URL to a valid absolute URL."
+      },
+      { status: 500 }
+    );
+  }
 }
 

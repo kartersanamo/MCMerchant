@@ -22,9 +22,15 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
 
+    const origin = window.location.origin;
+    const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/email-verified")}`;
+
     const { data, error } = await supabase.auth.signUp({
       email,
-      password
+      password,
+      options: {
+        emailRedirectTo
+      }
     });
 
     if (error) {
@@ -33,18 +39,21 @@ export default function SignupPage() {
       return;
     }
 
-    // MVP: attempt to create a profile row (requires matching RLS policy).
-    const userId = data.user?.id;
-    if (userId) {
-      const username = email.split("@")[0]?.slice(0, 32) ?? "user";
-      await supabase.from("profiles").upsert({
-        id: userId,
-        username,
-        display_name: username
-      });
+    // With "Confirm email" on, Supabase usually returns user + session=null.
+    // If the project has auto-confirm enabled, we may get a session immediately.
+    if (data.session?.user) {
+      const verified = !!(data.session.user.email_confirmed_at ?? data.session.user.confirmed_at);
+      setLoading(false);
+      if (verified) {
+        window.location.href = redirect;
+      } else {
+        router.push(`/check-email?email=${encodeURIComponent(email)}`);
+      }
+      return;
     }
 
-    router.push(redirect);
+    router.push(`/check-email?email=${encodeURIComponent(email)}`);
+    setLoading(false);
   }
 
   return (

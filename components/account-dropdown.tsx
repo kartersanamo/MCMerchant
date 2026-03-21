@@ -68,6 +68,15 @@ export function AccountDropdown({ user }: { user: AuthedUser }) {
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-72 origin-top-right rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
           <div className="p-3">
+            {!user.emailVerified ? (
+              <Link
+                href={`/check-email?email=${encodeURIComponent(user.email)}&reason=verify_email`}
+                className="mb-3 block rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 hover:bg-amber-500/15"
+                onClick={() => setOpen(false)}
+              >
+                Verify your email to sell, upload plugins, download the loader, and post reviews.
+              </Link>
+            ) : null}
             <div className="text-xs font-medium uppercase tracking-wider text-gray-500">
               Account
             </div>

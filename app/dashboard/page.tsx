@@ -1,12 +1,15 @@
-import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getAuthedUser } from "@/lib/supabase/server";
+import { EnsureProfile } from "@/components/ensure-profile";
 import Link from "next/link";
 import { StripeConnectButton } from "@/components/stripe-connect-button";
 import { syncStripeOnboardingStatus } from "@/lib/stripe-connect";
 import { MiniBarChart } from "@/components/mini-bar-chart";
 
 export default async function DashboardPage() {
-  const userId = await getAuthedUserId();
-  if (!userId) return null;
+  const actor = await getAuthedUser();
+  if (!actor) return null;
+  const userId = actor.id;
+  const sellerUnlocked = actor.emailVerified;
 
   const supabase = createSupabaseServerClient();
   const { stripeOnboarded } = await syncStripeOnboardingStatus(supabase, userId);
@@ -104,7 +107,24 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-10">
+      <EnsureProfile />
+
       <div className="rounded-2xl border border-gray-800 bg-gray-950/30 p-6">
+        {!sellerUnlocked ? (
+          <div className="mb-6 rounded-xl border border-amber-500/35 bg-amber-500/10 p-4">
+            <div className="text-sm font-medium text-amber-200">Verify your email to sell &amp; ship</div>
+            <p className="mt-1 text-sm text-amber-100/80">
+              Confirm the link we sent you to unlock your storefront, plugin uploads, loader download, and reviews.
+            </p>
+            <Link
+              href={`/check-email?email=${encodeURIComponent(actor.email)}&reason=verify_email`}
+              className="mt-3 inline-flex rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-gray-950 hover:brightness-110"
+            >
+              Resend confirmation email
+            </Link>
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-gray-100">Developer dashboard</h1>
@@ -114,28 +134,36 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:items-end">
-            <Link
-              href="/dashboard/storefront"
-              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-gray-950 shadow-sm transition hover:brightness-110"
-            >
-              Your storefront
-            </Link>
-            <Link
-              href="/dashboard/plugins/new"
-              className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:bg-gray-700"
-            >
-              Create new plugin
-            </Link>
-            <Link
-              href="/dashboard/payouts"
-              className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:bg-gray-700"
-            >
-              Payouts
-            </Link>
+            {sellerUnlocked ? (
+              <>
+                <Link
+                  href="/dashboard/storefront"
+                  className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-gray-950 shadow-sm transition hover:brightness-110"
+                >
+                  Your storefront
+                </Link>
+                <Link
+                  href="/dashboard/plugins/new"
+                  className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:bg-gray-700"
+                >
+                  Create new plugin
+                </Link>
+                <Link
+                  href="/dashboard/payouts"
+                  className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-gray-600 hover:bg-gray-700"
+                >
+                  Payouts
+                </Link>
+              </>
+            ) : (
+              <p className="max-w-xs text-right text-xs text-gray-500">
+                Seller shortcuts appear here after you verify your email.
+              </p>
+            )}
           </div>
         </div>
 
-        {!stripeOnboarded ? (
+        {!sellerUnlocked ? null : !stripeOnboarded ? (
           <div className="mt-5 rounded-xl border border-brand-500/60 bg-brand-500/10 p-4">
             <div className="text-sm font-medium text-brand-300">Connect Stripe</div>
             <div className="mt-1 text-sm text-gray-300">
@@ -324,24 +352,35 @@ export default async function DashboardPage() {
             </div>
 
             <div className="mt-5 flex flex-col gap-3">
-              <Link
-                href="/dashboard/storefront"
-                className="rounded-lg bg-brand-500 px-4 py-2 text-center text-sm font-medium text-gray-950 hover:brightness-110"
-              >
-                Open storefront settings
-              </Link>
-              <Link
-                href="/dashboard/plugins/new"
-                className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-center text-sm font-medium text-gray-200 hover:border-gray-600 hover:bg-gray-700"
-              >
-                Create new plugin
-              </Link>
-              <Link
-                href="/dashboard/plugins"
-                className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-center text-sm font-medium text-gray-200 hover:border-gray-600 hover:bg-gray-700"
-              >
-                Manage plugins
-              </Link>
+              {sellerUnlocked ? (
+                <>
+                  <Link
+                    href="/dashboard/storefront"
+                    className="rounded-lg bg-brand-500 px-4 py-2 text-center text-sm font-medium text-gray-950 hover:brightness-110"
+                  >
+                    Open storefront settings
+                  </Link>
+                  <Link
+                    href="/dashboard/plugins/new"
+                    className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-center text-sm font-medium text-gray-200 hover:border-gray-600 hover:bg-gray-700"
+                  >
+                    Create new plugin
+                  </Link>
+                  <Link
+                    href="/dashboard/plugins"
+                    className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-center text-sm font-medium text-gray-200 hover:border-gray-600 hover:bg-gray-700"
+                  >
+                    Manage plugins
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href={`/check-email?email=${encodeURIComponent(actor.email)}&reason=verify_email`}
+                  className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-sm font-medium text-amber-100 hover:bg-amber-500/15"
+                >
+                  Verify email to unlock these steps
+                </Link>
+              )}
             </div>
           </aside>
         </div>

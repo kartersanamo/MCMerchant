@@ -70,22 +70,43 @@ Set `NEXT_PUBLIC_APP_URL` (and optionally `NEXT_PUBLIC_SITE_URL`) so “share th
 
 ---
 
-## 3. Custom domains (roadmap)
+## 3. Custom domains (implemented flow)
 
-**Current state:** sellers can **record** a desired hostname (`custom_domain`) and a status flag. The app does **not** yet:
+Custom domains now use DNS challenge verification and host-based storefront routing.
 
-- Create DNS records
-- Issue TLS certificates
-- Route hostnames in Next.js / edge middleware to a seller
+### Additional SQL for verification metadata
 
-**Intended architecture (high level):**
+Run this once:
 
-1. Seller enters `plugins.example.com` in **Dashboard → Storefront**.
-2. Hosted on Vercel (or similar): project adds the domain to the deployment; seller adds `CNAME`/`ALIAS` as instructed.
-3. Middleware resolves `Host` → `profiles.custom_domain` → render the same UI as `/store/[handle]` (or 307 redirect to canonical path).
-4. Set `custom_domain_status = 'verified'` after automated checks (or manually for MVP).
+```sql
+alter table public.profiles
+  add column if not exists custom_domain_verification_token text,
+  add column if not exists custom_domain_verified_at timestamptz,
+  add column if not exists custom_domain_last_checked_at timestamptz;
 
-Until that works end-to-end, treat custom domains as **documentation + data capture** only.
+create unique index if not exists profiles_custom_domain_unique
+  on public.profiles (custom_domain)
+  where custom_domain is not null and length(trim(custom_domain)) > 0;
+```
+
+### User flow
+
+1. Seller enters `store.example.com` in **Dashboard → Storefront** and saves.
+2. App generates a verification token in `profiles.custom_domain_verification_token` and sets status to `pending`.
+3. Seller configures DNS:
+   - `CNAME store.example.com -> <your NEXT_PUBLIC_APP_URL host>`
+   - `TXT _mcmmerchant-challenge.store.example.com = <verification token>`
+4. Seller clicks **Verify custom domain** in dashboard.
+5. API checks DNS records and, on success, sets:
+   - `custom_domain_status = 'verified'`
+   - `custom_domain_verified_at = now()`
+6. Middleware rewrites requests on that host from `/` to `/store/{slug-or-username}`.
+
+### Important hosting notes
+
+- TLS/certificate issuance must still be handled by your hosting platform.
+- For Vercel, ensure the custom host is attached to the deployment/project.
+- Domain verification only checks DNS ownership and expected CNAME target.
 
 ---
 
