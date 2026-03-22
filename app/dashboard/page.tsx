@@ -2,6 +2,7 @@ import { createSupabaseServerClient, getAuthedUser } from "@/lib/supabase/server
 import { EnsureProfile } from "@/components/ensure-profile";
 import Link from "next/link";
 import { StripeConnectButton } from "@/components/stripe-connect-button";
+import { getStripeApiMode } from "@/lib/stripe";
 import { syncStripeOnboardingStatus } from "@/lib/stripe-connect";
 import { MiniBarChart } from "@/components/mini-bar-chart";
 
@@ -13,6 +14,7 @@ export default async function DashboardPage() {
 
   const supabase = createSupabaseServerClient();
   const { stripeOnboarded } = await syncStripeOnboardingStatus(supabase, userId);
+  const stripeMode = getStripeApiMode();
 
   const { data: allPlugins } = await supabase
     .from("plugins")
@@ -169,6 +171,12 @@ export default async function DashboardPage() {
             <div className="mt-1 text-sm text-gray-300">
               Enable Stripe Connect onboarding for payouts.
             </div>
+            {stripeMode === "test" ? (
+              <p className="mt-2 text-xs text-amber-200/85">
+                Using <span className="font-mono">sk_test_…</span> — only test Connect accounts. For real payouts,
+                set live keys on the server and open <Link href="/dashboard/payouts" className="underline">Payouts</Link>.
+              </p>
+            ) : null}
             <div className="mt-3">
               <StripeConnectButton />
             </div>

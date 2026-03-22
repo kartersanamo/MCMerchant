@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getEmailAuthCallbackUrl } from "@/lib/app-url";
+import {
+  isEmailAlreadyRegisteredSignupError,
+  isSignupObfuscatedExistingEmail
+} from "@/lib/auth/signup-duplicate";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -17,11 +21,14 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Existing account UX (clear message + CTAs), separate from generic errors. */
+  const [existingEmail, setExistingEmail] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setExistingEmail(null);
 
     const emailRedirectTo = getEmailAuthCallbackUrl("/email-verified");
 
@@ -34,7 +41,43 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setError(error.message);
+      if (isEmailAlreadyRegisteredSignupError(error)) {
+        setExistingEmail(email.trim());
+        setLoading(false);
+        return;
+      }
+
+      const msg = (error.message ?? "").trim();
+      const status = "status" in error ? Number((error as { status?: number }).status) : NaN;
+      const lower = msg.toLowerCase();
+      const looksLikeEmailOrServer =
+        status === 500 ||
+        lower.includes("error sending confirmation email") ||
+        lower.includes("confirmation email") ||
+        lower.includes("smtp") ||
+        lower.includes("mail") ||
+        lower.includes("internal server error") ||
+        (!msg && !Number.isFinite(status));
+
+      setError(
+        looksLikeEmailOrServer
+          ? `${msg || "Signup failed while sending the confirmation email."}\n\nThis usually means Supabase could not send email (custom SMTP misconfiguration) or a database trigger on signup failed. Check Dashboard → Logs → Auth, then Email/SMTP under Authentication → Providers. See docs/supabase-auth-email-troubleshooting.md.`
+          : msg || "Sign up failed. Please try again."
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (isSignupObfuscatedExistingEmail(data)) {
+      setExistingEmail(email.trim());
+      setLoading(false);
+      return;
+    }
+
+    if (!data.user) {
+      setError(
+        "We couldn’t complete sign-up. If you already have an account, use Log in below or try forgot password."
+      );
       setLoading(false);
       return;
     }
@@ -86,7 +129,39 @@ export default function SignupPage() {
           />
         </div>
 
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
+        {existingEmail ? (
+          <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 text-sm text-sky-100/90">
+            <p className="font-semibold text-sky-50">An account already exists for this email</p>
+            <p className="mt-2 leading-relaxed text-sky-100/85">
+              That address is already registered. Log in with your existing password, or reset your password if
+              you don&apos;t remember it. If you never finished email confirmation, you can resend the link.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Link
+                href={`/login?redirect=${encodeURIComponent(redirect)}&email=${encodeURIComponent(existingEmail)}`}
+                className="inline-flex justify-center rounded-md bg-brand-500 px-4 py-2 text-center text-sm font-medium text-gray-950"
+              >
+                Log in
+              </Link>
+              <Link
+                href={`/forgot-password?email=${encodeURIComponent(existingEmail)}`}
+                className="inline-flex justify-center rounded-md border border-sky-400/35 bg-sky-500/10 px-4 py-2 text-center text-sm font-medium text-sky-100 hover:bg-sky-500/15"
+              >
+                Forgot password
+              </Link>
+              <Link
+                href={`/check-email?email=${encodeURIComponent(existingEmail)}`}
+                className="inline-flex justify-center rounded-md border border-gray-700 px-4 py-2 text-center text-sm font-medium text-gray-200 hover:bg-gray-800/80"
+              >
+                Resend confirmation email
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="whitespace-pre-wrap text-sm text-red-400">{error}</div>
+        ) : null}
 
         <button
           disabled={loading}

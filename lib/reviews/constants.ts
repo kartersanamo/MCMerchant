@@ -1,0 +1,2 @@
+export const MAX_REVIEW_BODY_LENGTH = 4_000;
+export const MAX_SELLER_REPLY_LENGTH = 2_000;

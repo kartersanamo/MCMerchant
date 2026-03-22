@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getAuthedUser } from "@/lib/supabase/server";
+import { userCanReviewPlugin } from "@/lib/reviews/eligibility";
 import { StarRating } from "@/components/star-rating";
 import { MarkdownContent } from "@/components/markdown-content";
 import { NoLicenseModal } from "@/components/no-license-modal";
@@ -50,7 +51,7 @@ export default async function PluginPage({
   const errorParam = searchParams?.error;
 
   const supabase = createSupabaseServerClient();
-  const authedUserId = await getAuthedUserId();
+  const actor = await getAuthedUser();
 
   const { data: plugin, error: pluginErr } = await supabase
     .from("plugins")
@@ -92,7 +93,9 @@ export default async function PluginPage({
 
   const { data: reviews } = await supabase
     .from("reviews")
-    .select("id, buyer_id, rating, body, created_at")
+    .select(
+      "id, buyer_id, rating, body, created_at, updated_at, seller_reply, seller_reply_at, seller_reply_updated_at"
+    )
     .eq("plugin_id", plugin.id);
 
   const ratingAvg =
@@ -114,6 +117,29 @@ export default async function PluginPage({
 
   const latestVersionLabel = latest?.version ?? "n/a";
   const reviewCount = (reviews ?? []).length;
+
+  const canReviewPlugin = actor?.id
+    ? await userCanReviewPlugin(supabase, actor.id, {
+        id: plugin.id,
+        seller_id: plugin.seller_id,
+        price_cents: plugin.price_cents
+      })
+    : false;
+
+  const canPostReview = Boolean(
+    actor?.id && actor.emailVerified && canReviewPlugin && actor.id !== plugin.seller_id
+  );
+
+  let reviewBlockReason: string | null = null;
+  if (!actor?.id) reviewBlockReason = "Sign in to write a review.";
+  else if (!actor.emailVerified) reviewBlockReason = "Verify your email to write a review.";
+  else if (actor.id === plugin.seller_id) reviewBlockReason = "You can’t review your own plugin.";
+  else if (!canReviewPlugin) {
+    reviewBlockReason =
+      (plugin.price_cents ?? 0) > 0
+        ? "Purchase this plugin (or use your license) to write a review."
+        : "You can’t post a review right now.";
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-10">
@@ -185,7 +211,7 @@ export default async function PluginPage({
                 </div>
 
                 {plugin.price_cents > 0 ? (
-                  authedUserId ? (
+                  actor?.id ? (
                     latest?.id ? (
                       <Link
                         href={`/api/v1/checkout-session?pluginId=${plugin.id}&versionId=${latest.id}&slug=${plugin.slug}`}
@@ -309,16 +335,29 @@ export default async function PluginPage({
             {tab === "reviews" ? (
               <div id="reviews">
               <PluginReviewsTab
-                reviews={(reviews ?? []).map((r: any) => ({
+                pluginId={plugin.id}
+                pluginSlug={params.slug}
+                sellerId={plugin.seller_id}
+                sellerUsername={sellerUsername}
+                initialReviews={(reviews ?? []).map((r: any) => ({
                   id: r.id,
                   buyer_id: r.buyer_id,
                   rating: Number(r.rating ?? 0),
                   body: r.body ?? null,
-                  created_at: r.created_at ?? null
+                  created_at: r.created_at ?? null,
+                  updated_at: r.updated_at ?? null,
+                  seller_reply: r.seller_reply ?? null,
+                  seller_reply_at: r.seller_reply_at ?? null,
+                  seller_reply_updated_at: r.seller_reply_updated_at ?? null
                 }))}
                 reviewUsernames={reviewUsernames}
                 ratingAvg={ratingAvg}
-                pluginSlug={params.slug}
+                viewer={{
+                  userId: actor?.id ?? null,
+                  emailVerified: actor?.emailVerified ?? false
+                }}
+                canPostReview={canPostReview}
+                reviewBlockReason={reviewBlockReason}
               />
               </div>
             ) : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -9,14 +9,19 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/browse";
+  const emailFromQuery = searchParams.get("email") ?? "";
 
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailFromQuery);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
+
+  useEffect(() => {
+    if (emailFromQuery) setEmail(emailFromQuery);
+  }, [emailFromQuery]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,7 +94,19 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label className="block text-sm text-gray-300">Password</label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="block text-sm text-gray-300">Password</label>
+            <Link
+              href={
+                email.trim()
+                  ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+                  : "/forgot-password"
+              }
+              className="text-xs font-medium text-brand-400 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}

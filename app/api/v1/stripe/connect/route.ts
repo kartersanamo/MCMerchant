@@ -1,15 +1,27 @@
 import { NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe";
+import Stripe from "stripe";
+import { getStripe, getStripeApiMode } from "@/lib/stripe";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
 
-export async function POST() {
+export async function POST(request: Request) {
   const gate = await requireVerifiedUserForApi();
   if (gate instanceof NextResponse) return gate;
   const { userId } = gate;
 
-  const stripe = getStripe();
+  let reset = false;
+  const ct = request.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    try {
+      const body = (await request.json()) as { reset?: boolean };
+      reset = Boolean(body?.reset);
+    } catch {
+      /* ignore invalid JSON */
+    }
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const mode = getStripeApiMode();
 
   const supabase = createSupabaseServerClient();
   const { data: profile } = await supabase
@@ -20,33 +32,64 @@ export async function POST() {
 
   let accountId = profile?.stripe_account_id ?? null;
 
-  if (!accountId) {
-    const account = await stripe.accounts.create({
-      type: "express",
-      email: undefined,
-      metadata: { userId },
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true }
-      }
-    });
-    accountId = account.id;
+  if (reset) {
     await supabase
       .from("profiles")
-      .update({
-        stripe_account_id: account.id,
-        stripe_onboarded: false
-      })
+      .update({ stripe_account_id: null, stripe_onboarded: false })
       .eq("id", userId);
+    accountId = null;
   }
 
-  const accountLink = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `${appUrl}/dashboard/payouts`,
-    return_url: `${appUrl}/dashboard/payouts`,
-    type: "account_onboarding"
-  });
+  try {
+    const stripe = getStripe();
 
-  return NextResponse.json({ url: accountLink.url }, { status: 200 });
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: "express",
+        email: undefined,
+        metadata: { userId },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true }
+        }
+      });
+      accountId = account.id;
+      await supabase
+        .from("profiles")
+        .update({
+          stripe_account_id: account.id,
+          stripe_onboarded: false
+        })
+        .eq("id", userId);
+    }
+
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${appUrl}/dashboard/payouts`,
+      return_url: `${appUrl}/dashboard/payouts`,
+      type: "account_onboarding"
+    });
+
+    return NextResponse.json({ url: accountLink.url, stripeMode: mode }, { status: 200 });
+  } catch (e: unknown) {
+    if (e instanceof Stripe.errors.StripeError) {
+      const sc = e.statusCode;
+      const status =
+        typeof sc === "number" && sc >= 400 && sc < 600 ? sc : 400;
+      return NextResponse.json(
+        {
+          error: e.message,
+          stripeType: e.type,
+          requestId: e.requestId
+        },
+        { status }
+      );
+    }
+    console.error("[stripe/connect]", e);
+    return NextResponse.json(
+      { error: "Unexpected error starting Stripe Connect." },
+      { status: 500 }
+    );
+  }
 }
 

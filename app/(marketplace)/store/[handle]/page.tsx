@@ -467,7 +467,14 @@ export default async function PublicStorefrontPage({ params }: { params: { handl
             <StorefrontCatalog items={catalogItems} theme={theme} />
           ) : (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-700 bg-gray-900/20 py-20 text-center">
-              <Image src="/MCMerchantMono.png" alt="" width={56} height={56} className="opacity-40" />
+              <Image
+                src="/MCMerchantMono.png"
+                alt=""
+                width={56}
+                height={56}
+                className="opacity-40"
+                unoptimized
+              />
               <p className="mt-4 text-sm text-gray-400">No published plugins yet.</p>
               <p className="mt-1 text-xs text-gray-600">Check back soon for new releases.</p>
             </div>

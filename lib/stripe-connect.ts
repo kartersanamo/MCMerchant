@@ -22,27 +22,45 @@ export async function syncStripeOnboardingStatus(
     return { stripeOnboarded: false, stripeAccountId: null };
   }
 
-  const alreadyOnboarded = Boolean(profile?.stripe_onboarded);
-  if (alreadyOnboarded) {
-    return { stripeOnboarded: true, stripeAccountId: accountId };
-  }
-
   try {
     const stripe = getStripe();
     const account = await stripe.accounts.retrieve(accountId);
-    const detailsSubmitted = Boolean((account as any).details_submitted);
-    if (detailsSubmitted) {
-      await supabase
-        .from("profiles")
-        .update({ stripe_onboarded: true })
-        .eq("id", userId);
+    const payoutsEnabled = Boolean((account as any).payouts_enabled);
+
+    if (payoutsEnabled) {
+      if (!profile?.stripe_onboarded) {
+        await supabase.from("profiles").update({ stripe_onboarded: true }).eq("id", userId);
+      }
       return { stripeOnboarded: true, stripeAccountId: accountId };
     }
-  } catch {
-    // Stripe API error; keep current state
-  }
 
-  return { stripeOnboarded: false, stripeAccountId: accountId };
+    // Connected account exists but onboarding / capabilities not finished yet
+    return { stripeOnboarded: false, stripeAccountId: accountId };
+  } catch (err: unknown) {
+    const e = err as { code?: string; message?: string };
+    const code = e?.code ?? "";
+    const msg = String(e?.message ?? "").toLowerCase();
+    // Switching STRIPE_SECRET_KEY between test ↔ live leaves a stale acct_* in the DB
+    const staleAccount =
+      code === "resource_missing" ||
+      msg.includes("no such account") ||
+      msg.includes("similar object exists in live mode") ||
+      msg.includes("similar object exists in test mode");
+
+    if (staleAccount) {
+      await supabase
+        .from("profiles")
+        .update({ stripe_account_id: null, stripe_onboarded: false })
+        .eq("id", userId);
+      return { stripeOnboarded: false, stripeAccountId: null };
+    }
+
+    // Transient errors — keep DB row; mirror last known flag for UI
+    return {
+      stripeOnboarded: Boolean(profile?.stripe_onboarded),
+      stripeAccountId: accountId
+    };
+  }
 }
 
 export type PayoutInfo = {

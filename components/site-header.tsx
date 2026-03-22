@@ -9,6 +9,7 @@ export function SiteHeader({ authedUser }: { authedUser: AuthedUser | null }) {
     <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
         <Link href="/" className="flex items-center gap-2">
+          {/* Static file: unoptimized avoids Docker/sharp failures on /_next/image */}
           <Image
             src="/MCMerchantMono.png"
             alt="MCMerchant"
@@ -16,6 +17,7 @@ export function SiteHeader({ authedUser }: { authedUser: AuthedUser | null }) {
             height={36}
             className="h-9 w-auto"
             priority
+            unoptimized
           />
           <span className="text-sm font-semibold text-gray-50">MCMerchant</span>
         </Link>

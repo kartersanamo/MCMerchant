@@ -14,6 +14,7 @@ export function SiteFooter({ authedUser }: { authedUser: AuthedUser | null }) {
             width={20}
             height={20}
             className="h-5 w-auto opacity-80"
+            unoptimized
           />
           <span className="font-medium">© {new Date().getFullYear()} MCMerchant</span>
         </div>
