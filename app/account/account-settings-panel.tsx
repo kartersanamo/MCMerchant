@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { SUPPORT_DISCORD_URL } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -310,13 +311,15 @@ export function AccountSettingsPanel({
       <section className="rounded-2xl border border-red-900/40 bg-red-950/20 p-6">
         <h2 className="text-lg font-semibold text-red-100">Danger zone</h2>
         <p className="mt-1 text-sm text-red-200/90">
-          Need account deletion or data export? Contact support from the email address on this account.
+          Need account deletion or data export? Open a ticket in our Discord server and we&apos;ll help from there.
         </p>
         <a
-          href="mailto:support@mcmmerchant.net?subject=Account%20Support%20Request"
+          href={SUPPORT_DISCORD_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="mt-4 inline-flex rounded-lg border border-red-700/60 bg-red-900/20 px-4 py-2 text-sm font-medium text-red-100 hover:bg-red-900/35"
         >
-          Contact support
+          Discord support
         </a>
       </section>
     </div>

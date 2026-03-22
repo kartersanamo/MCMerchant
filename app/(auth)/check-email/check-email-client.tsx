@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { getEmailAuthCallbackUrl } from "@/lib/app-url";
+import { getEmailAuthCallbackUrl, SUPPORT_DISCORD_URL } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function CheckEmailClient() {
@@ -29,7 +29,7 @@ export function CheckEmailClient() {
       case "callback_failed":
         return "We couldn’t finish signing you in from that link. Try again from a fresh email or resend below.";
       case "config":
-        return "Server configuration error. Please contact support.";
+        return `Server configuration error. Open a support ticket in our Discord: ${SUPPORT_DISCORD_URL}`;
       default:
         return error ? "Something went wrong. Try resending the email or sign in again." : null;
     }

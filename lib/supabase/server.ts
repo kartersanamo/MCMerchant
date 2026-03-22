@@ -4,29 +4,27 @@ import { createServerClient } from "@supabase/ssr";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-function getCookie(name: string) {
-  return cookies().get(name)?.value ?? null;
-}
-
 export function createSupabaseServerClient() {
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL");
   }
 
+  const cookieStore = cookies();
+
   return createServerClient(supabaseUrl, serviceRoleKey, {
     cookies: {
-      get: (name: string) => getCookie(name),
-      set: (name: string, value: string, options: any) => {
-        cookies().set({ name, value, ...(options ?? {}) });
+      getAll() {
+        return cookieStore.getAll();
       },
-      remove: (name: string, options: any) => {
-        // Supabase expects cookie removal; setting an expired cookie is sufficient.
-        cookies().set({
-          name,
-          value: "",
-          ...(options ?? {}),
-          maxAge: 0
-        });
+      setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options as any);
+          });
+        } catch {
+          // Server Components cannot mutate cookies. Supabase may try to clear the
+          // session after a failed refresh (e.g. stale or revoked refresh_token).
+        }
       }
     }
   });

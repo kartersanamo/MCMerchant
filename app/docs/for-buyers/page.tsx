@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DocsToc, type DocsTocItem } from "@/components/docs-toc";
+import { SUPPORT_DISCORD_URL } from "@/lib/app-url";
 
 const toc: DocsTocItem[] = [
   { id: "overview", title: "Buyer experience overview", group: "Getting started" },
@@ -138,7 +139,18 @@ export default function BuyerDocsPage() {
                 <div className="space-y-3">
                   <div className="rounded-xl border border-gray-800/80 bg-gray-950/30 p-4">
                     <p className="text-sm font-semibold text-gray-200">Purchase succeeded but license missing</p>
-                    <p className="mt-1 text-sm text-gray-300">Wait a moment, then refresh Purchases and Licenses. If it still doesn’t appear, contact support.</p>
+                    <p className="mt-1 text-sm text-gray-300">
+                      Wait a moment, then refresh Purchases and Licenses. If it still doesn’t appear,{" "}
+                      <a
+                        href={SUPPORT_DISCORD_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-300 underline-offset-4 hover:text-cyan-200 hover:underline"
+                      >
+                        open a support ticket on Discord
+                      </a>
+                      .
+                    </p>
                   </div>
                   <div className="rounded-xl border border-gray-800/80 bg-gray-950/30 p-4">
                     <p className="text-sm font-semibold text-gray-200">Can’t download</p>

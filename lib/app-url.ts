@@ -42,3 +42,6 @@ export function getCanonicalAppOriginForServer(): string {
   }
   return "";
 }
+
+/** User support: open a ticket in the MCMerchant Discord server. */
+export const SUPPORT_DISCORD_URL = "https://discord.gg/yhkADUBcRe" as const;

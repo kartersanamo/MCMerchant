@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { SUPPORT_DISCORD_URL } from "@/lib/app-url";
 import { checkForAbuse } from "./abuse";
 import type {
   LicenseKeyRow,
@@ -51,7 +52,10 @@ export async function verifyLicense(
       result: "denied_suspended",
       reason: "License is suspended pending review",
     });
-    return deny("denied_suspended", "This license is suspended. Contact support.");
+    return deny(
+      "denied_suspended",
+      `This license is suspended. Open a support ticket in Discord: ${SUPPORT_DISCORD_URL}`
+    );
   }
 
   if (lic.status === "expired" || (lic.expires_at && new Date(lic.expires_at) < new Date())) {
@@ -79,7 +83,10 @@ export async function verifyLicense(
       result: "denied_abuse_flag",
       reason: lic.flag_reason || "Flagged for suspicious activity",
     });
-    return deny("denied_abuse_flag", "This license has been flagged. Contact support.");
+    return deny(
+      "denied_abuse_flag",
+      `This license has been flagged. Open a support ticket in Discord: ${SUPPORT_DISCORD_URL}`
+    );
   }
 
   // 4) IP binding.

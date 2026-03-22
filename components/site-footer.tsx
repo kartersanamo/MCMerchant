@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { AuthedUser } from "@/lib/supabase/server";
+import { SUPPORT_DISCORD_URL } from "@/lib/app-url";
 
 export function SiteFooter({ authedUser }: { authedUser: AuthedUser | null }) {
   const sellerUnlocked = !!(authedUser?.emailVerified);
@@ -173,11 +174,22 @@ export function SiteFooter({ authedUser }: { authedUser: AuthedUser | null }) {
             verified loader updates.
           </p>
           <div className="flex w-full flex-wrap gap-x-5 gap-y-2 text-xs text-gray-500">
+            <Link href="/tos" className="hover:text-gray-300">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="hover:text-gray-300">
+              Privacy Policy
+            </Link>
             <a className="hover:text-gray-300" href="https://github.com/">
               GitHub
             </a>
-            <a className="hover:text-gray-300" href="mailto:support@mcmmerchant.net">
-              support@mcmmerchant.net
+            <a
+              className="hover:text-gray-300"
+              href={SUPPORT_DISCORD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Discord support
             </a>
           </div>
         </div>

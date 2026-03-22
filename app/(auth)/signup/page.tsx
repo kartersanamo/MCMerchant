@@ -129,6 +129,26 @@ export default function SignupPage() {
           />
         </div>
 
+        <div className="flex items-start gap-3">
+          <input
+            id="signup-legal-agree"
+            type="checkbox"
+            required
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-700 bg-gray-950 text-brand-500 focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 focus:ring-offset-gray-950"
+          />
+          <label htmlFor="signup-legal-agree" className="text-sm text-gray-300">
+            I agree to the{" "}
+            <Link href="/tos" className="text-brand-400 hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-brand-400 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </label>
+        </div>
+
         {existingEmail ? (
           <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 text-sm text-sky-100/90">
             <p className="font-semibold text-sky-50">An account already exists for this email</p>
