@@ -159,7 +159,7 @@ function SocialIconRow({
         href="/browse"
         className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${theme.pillIdle}`}
       >
-        Marketplace
+        All plugins catalog
       </Link>
     </div>
   );
@@ -284,7 +284,11 @@ export default async function PublicStorefrontPage({ params }: { params: { handl
         <header className={`relative overflow-hidden rounded-3xl border ${theme.accentBorder} bg-gray-950 shadow-2xl ${theme.glow}`}>
           {bannerUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- user-provided banner from any host
-            <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" />
+            <img
+              src={bannerUrl}
+              alt={`Storefront banner · ${displayName}`}
+              className="absolute inset-0 h-full w-full object-cover opacity-35"
+            />
           ) : null}
           <div
             className={`absolute inset-0 bg-gradient-to-br ${theme.heroGradient} ${bannerUrl ? "opacity-80" : "opacity-100"}`}
@@ -301,7 +305,7 @@ export default async function PublicStorefrontPage({ params }: { params: { handl
                     // User-provided URL from any host; use plain img (not next/image) so no remotePatterns needed.
                     <img
                       src={iconUrl}
-                      alt=""
+                      alt={`${displayName} storefront icon`}
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />
@@ -398,7 +402,7 @@ export default async function PublicStorefrontPage({ params }: { params: { handl
                   {featuredId.cover_image_url ? (
                     <Image
                       src={featuredId.cover_image_url}
-                      alt=""
+                      alt={`${featuredId.name} cover`}
                       fill
                       className="object-cover"
                       sizes="(max-width: 1024px) 100vw, 320px"
@@ -436,13 +440,13 @@ export default async function PublicStorefrontPage({ params }: { params: { handl
                       href={`/plugin/${featuredId.slug}`}
                       className="rounded-xl bg-gray-100 px-5 py-2.5 text-sm font-semibold text-gray-950 transition hover:bg-white"
                     >
-                      View plugin
+                      Plugin details
                     </Link>
                     <Link
                       href={`/plugin/${featuredId.slug}/install`}
                       className={`rounded-xl border px-5 py-2.5 text-sm font-medium transition ${theme.pillIdle}`}
                     >
-                      Install
+                      Installer & downloads
                     </Link>
                     <span className="flex items-center rounded-xl border border-gray-700 bg-gray-900/50 px-4 py-2.5 text-sm font-medium text-gray-200">
                       {formatPrice(featuredId.price_cents ?? 0)}
@@ -469,7 +473,7 @@ export default async function PublicStorefrontPage({ params }: { params: { handl
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-700 bg-gray-900/20 py-20 text-center">
               <Image
                 src="/MCMerchantMono.png"
-                alt=""
+                alt="MCMerchant"
                 width={56}
                 height={56}
                 className="opacity-40"

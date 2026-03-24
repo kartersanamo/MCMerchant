@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { getAuthedUser } from "@/lib/supabase/server";
 import { SiteHeader } from "../components/site-header";
 import { SiteFooter } from "../components/site-footer";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: {
-    default: "MCMerchant",
+    default:
+      "MCMerchant — Minecraft Plugin Marketplace, Licensing & Secure Updates for Developers",
     template: "%s | MCMerchant"
   },
   description: "The marketplace + licensing + updater channel for Minecraft plugin developers.",
@@ -19,26 +17,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children
 }: {
   children: React.ReactNode;
 }) {
-  let authedUser: Awaited<ReturnType<typeof getAuthedUser>> = null;
-  try {
-    authedUser = await getAuthedUser();
-  } catch {
-    authedUser = null;
-  }
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen">
-        <SiteHeader authedUser={authedUser} />
+        <SiteHeader />
         <main>{children}</main>
-        <SiteFooter authedUser={authedUser} />
+        <SiteFooter />
       </body>
     </html>
   );
 }
-

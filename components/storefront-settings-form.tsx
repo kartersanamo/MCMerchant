@@ -178,9 +178,6 @@ export function StorefrontSettingsForm({ profile, hasStorefrontColumns }: Props)
               {publicPath}
             </Link>
           </p>
-          <p className="mt-1 text-xs text-gray-500">
-            Tip: set <span className="font-mono">NEXT_PUBLIC_APP_URL</span> for correct share links in production.
-          </p>
         </div>
         <Link
           href={publicPath}

@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getEmailAuthCallbackUrl } from "@/lib/app-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/browse";
@@ -192,6 +192,18 @@ export default function LoginPage() {
         </p>
       </form>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-md px-6 py-14 text-center text-sm text-gray-400">Loading…</div>
+      }
+    >
+      <LoginPageInner />
+    </Suspense>
   );
 }
 

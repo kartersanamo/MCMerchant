@@ -54,7 +54,7 @@ export function AddDropdown() {
               className="block px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-gray-50"
               onClick={() => setOpen(false)}
             >
-              Storefront
+              Open storefront editor
             </Link>
           </div>
         </div>

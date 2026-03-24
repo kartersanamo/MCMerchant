@@ -7,6 +7,8 @@ import { NoLicenseModal } from "@/components/no-license-modal";
 import { PluginReviewsTab } from "@/components/plugin-reviews-tab";
 import { getCategoryLabel } from "@/lib/constants/categories";
 import { ReportPluginPlaceholder } from "@/components/report-plugin-placeholder";
+import { SocialShareBar } from "@/components/social-share-bar";
+import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 import Image from "next/image";
 
 function DownloadIcon({ className }: { className?: string }) {
@@ -130,6 +132,14 @@ export default async function PluginPage({
     actor?.id && actor.emailVerified && canReviewPlugin && actor.id !== plugin.seller_id
   );
 
+  const pluginPath = `/plugin/${plugin.slug}`;
+  const pluginOrigin = getCanonicalAppOriginForServer();
+  const pluginAbsoluteUrl =
+    pluginOrigin && pluginOrigin.startsWith("http") ? `${pluginOrigin}${pluginPath}` : null;
+  const pluginShareSummary = plugin.tagline?.trim()
+    ? `${plugin.name} — ${plugin.tagline.trim()}`
+    : `${plugin.name} — Minecraft plugin on MCMerchant`;
+
   let reviewBlockReason: string | null = null;
   if (!actor?.id) reviewBlockReason = "Sign in to write a review.";
   else if (!actor.emailVerified) reviewBlockReason = "Verify your email to write a review.";
@@ -229,7 +239,7 @@ export default async function PluginPage({
                       href={`/login?redirect=/plugin/${plugin.slug}`}
                       className="rounded-md bg-brand-500 px-5 py-2.5 text-center font-medium text-gray-950"
                     >
-                      Buy now
+                      Sign in to buy
                     </Link>
                   )
                 ) : (
@@ -296,23 +306,13 @@ export default async function PluginPage({
                         <div className="text-xs text-gray-400">
                           {v.download_count ?? 0} downloads
                         </div>
-                        {(plugin.price_cents ?? 0) <= 0 ? (
-                          <Link
-                            href={`/plugin/${plugin.slug}/install?versionId=${v.id}`}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-gray-200 hover:border-gray-600 hover:bg-gray-700"
-                          >
-                            <DownloadIcon className="h-4 w-4" />
-                            Download
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/plugin/${plugin.slug}/install?versionId=${v.id}`}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-gray-200 hover:border-gray-600 hover:bg-gray-700"
-                          >
-                            <DownloadIcon className="h-4 w-4" />
-                            Download
-                          </Link>
-                        )}
+                        <Link
+                          href={`/plugin/${plugin.slug}/install?versionId=${v.id}`}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-gray-200 hover:border-gray-600 hover:bg-gray-700"
+                        >
+                          <DownloadIcon className="h-4 w-4" />
+                          Download v{v.version}
+                        </Link>
                       </div>
                     </div>
                     {v.changelog ? (
@@ -382,7 +382,15 @@ export default async function PluginPage({
             ) : null}
           </section>
 
-          <aside className="space-y-4">
+          <aside className="min-w-0 space-y-4">
+            <SocialShareBar
+              absoluteUrl={pluginAbsoluteUrl}
+              path={pluginPath}
+              headline="Share this plugin"
+              nativeShareTitle={plugin.name}
+              shareSummary={pluginShareSummary}
+            />
+
             <div className="rounded-xl border border-gray-800 bg-gray-900/30 p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs font-medium text-gray-400">Latest</div>

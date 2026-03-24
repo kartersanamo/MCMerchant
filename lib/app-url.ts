@@ -45,3 +45,16 @@ export function getCanonicalAppOriginForServer(): string {
 
 /** User support: open a ticket in the MCMerchant Discord server. */
 export const SUPPORT_DISCORD_URL = "https://discord.gg/yhkADUBcRe" as const;
+
+/** Optional public repo URL for the footer (HTTPS only). READMEs that link to your site help discovery over time. */
+export function getPublicSourceRepoUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_GITHUB_URL?.trim();
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return null;
+    return u.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}

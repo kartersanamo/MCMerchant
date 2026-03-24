@@ -1,5 +1,8 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import type { AuthedUser } from "@/lib/authed-user";
+
+export type { AuthedUser };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,14 +39,6 @@ export async function getAuthedUserId() {
   if (error) throw error;
   return data.user?.id ?? null;
 }
-
-export type AuthedUser = {
-  id: string;
-  email: string;
-  displayName: string;
-  /** False when Supabase allows sign-in before email confirmation (project setting). */
-  emailVerified: boolean;
-};
 
 export async function getAuthedUser(): Promise<AuthedUser | null> {
   const supabase = createSupabaseServerClient();

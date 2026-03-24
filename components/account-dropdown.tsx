@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useEffect, useState, useMemo } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { AuthedUser } from "@/lib/supabase/server";
+import type { AuthedUser } from "@/lib/authed-user";
 
 function DefaultAvatarIcon({ className }: { className?: string }) {
   return (

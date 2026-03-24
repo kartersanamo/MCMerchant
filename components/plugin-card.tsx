@@ -66,12 +66,9 @@ export function PluginCard({ plugin }: { plugin: PluginCardData }) {
             <span className="font-medium text-gray-100">{plugin.seller_username}</span>
           )}
         </div>
-        <Link
-          href={`/plugin/${plugin.slug}`}
-          className="shrink-0 rounded-full border border-gray-800 bg-gray-950 px-2 py-0.5 text-xs text-gray-200 hover:border-gray-700"
-        >
+        <span className="shrink-0 rounded-full border border-gray-800 bg-gray-950 px-2 py-0.5 text-xs text-gray-200">
           {formatPrice(plugin.price_cents)}
-        </Link>
+        </span>
       </div>
 
       <div className="mt-2 flex items-center justify-between">

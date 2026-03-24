@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getEmailAuthCallbackUrl } from "@/lib/app-url";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth/signup-duplicate";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export default function SignupPage() {
+function SignupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/dashboard";
@@ -201,6 +201,18 @@ export default function SignupPage() {
         </p>
       </form>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-md px-6 py-14 text-center text-sm text-gray-400">Loading…</div>
+      }
+    >
+      <SignupPageInner />
+    </Suspense>
   );
 }
 

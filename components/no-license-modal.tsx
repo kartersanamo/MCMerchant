@@ -95,7 +95,7 @@ export function NoLicenseModal({
                 href={`/plugin/${pluginSlug}`}
                 className="rounded-lg bg-brand-500 px-4 py-2.5 text-center text-sm font-medium text-gray-950 transition hover:brightness-110"
               >
-                View plugin
+                Back to plugin
               </Link>
             )}
           </div>

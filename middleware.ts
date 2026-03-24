@@ -7,6 +7,75 @@ function normalizeHost(input: string | null): string {
   return input.split(":")[0].trim().toLowerCase();
 }
 
+/** Public hostname from env, or null for localhost / missing. */
+function getCanonicalHostname(): string | null {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return null;
+  try {
+    const h = new URL(raw.replace(/\/$/, "")).hostname.toLowerCase();
+    if (!h || h === "localhost" || h === "127.0.0.1") return null;
+    return h;
+  } catch {
+    return null;
+  }
+}
+
+function isLocalDevHost(host: string) {
+  return host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+}
+
+/** Hostnames that should resolve to the same site as canonical (www ↔ apex). */
+function hostVariantsForCanonical(canonicalHost: string): Set<string> {
+  const v = new Set<string>([canonicalHost]);
+  if (canonicalHost.startsWith("www.")) {
+    v.add(canonicalHost.slice(4));
+  } else {
+    v.add(`www.${canonicalHost}`);
+  }
+  return v;
+}
+
+/**
+ * Enforce https:// + single hostname from NEXT_PUBLIC_APP_URL (or SITE_URL) in production.
+ * Skips: previews, dev, *.vercel.app, and any host that is not an alias of the canonical domain
+ * (so seller custom domains keep working).
+ */
+function shouldEnforceCanonicalHostRedirect(): boolean {
+  if (process.env.DISABLE_CANONICAL_REDIRECT === "1") return false;
+  if (process.env.VERCEL_ENV === "preview" || process.env.VERCEL_ENV === "development") return false;
+  if (process.env.NODE_ENV !== "production") return false;
+  return true;
+}
+
+function canonicalHostRedirect(req: NextRequest): NextResponse | null {
+  const host = normalizeHost(req.headers.get("host"));
+  if (!host || isLocalDevHost(host)) return null;
+  if (!shouldEnforceCanonicalHostRedirect()) return null;
+
+  const canonical = getCanonicalHostname();
+  if (!canonical) return null;
+
+  if (host.endsWith(".vercel.app")) return null;
+
+  const variants = hostVariantsForCanonical(canonical);
+  if (!variants.has(host)) return null;
+
+  const fwd = req.headers.get("x-forwarded-proto");
+  const proto =
+    fwd ?? (req.nextUrl.protocol.replace(":", "") === "https" ? "https" : "http");
+
+  const wrongProto = proto !== "https";
+  const wrongHost = host !== canonical;
+  if (!wrongProto && !wrongHost) return null;
+
+  const target = req.nextUrl.clone();
+  target.protocol = "https:";
+  target.hostname = canonical;
+  target.port = "";
+
+  return NextResponse.redirect(target, 301);
+}
+
 function getPrimaryHosts(): Set<string> {
   const hosts = new Set<string>(["localhost", "127.0.0.1"]);
   try {
@@ -40,6 +109,9 @@ function isAuthWall(pathname: string) {
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
+  const canonicalRedirect = canonicalHostRedirect(req);
+  if (canonicalRedirect) return canonicalRedirect;
+
   // Supabase sometimes sends users to the project "Site URL" root with ?code=...
   // Forward to the real OAuth callback route.
   if (pathname === "/" && req.nextUrl.searchParams.has("code")) {
@@ -53,6 +125,13 @@ export async function middleware(req: NextRequest) {
 
   const needsAuth = isAuthWall(pathname) || pathname.startsWith("/loader/install");
   const needsVerified = requiresEmailVerification(pathname);
+  const onPrimaryHost = primaryHosts.has(host);
+  /** Custom domain landing `/` may rewrite to a storefront — needs DB lookup. */
+  const needsCustomDomainHomeRewrite = !onPrimaryHost && pathname === "/";
+
+  if (!needsAuth && !needsVerified && !needsCustomDomainHomeRewrite) {
+    return NextResponse.next();
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -78,7 +157,7 @@ export async function middleware(req: NextRequest) {
   // Custom-domain storefront routing:
   // If host is not one of our primary hosts and the user opens `/`,
   // resolve the domain to a verified seller storefront.
-  if (!primaryHosts.has(host) && pathname === "/") {
+  if (needsCustomDomainHomeRewrite) {
     const { data: domainProfile } = await supabase
       .from("profiles")
       .select("username, store_slug")
@@ -94,7 +173,9 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  if (!needsAuth && !needsVerified) return NextResponse.next();
+  if (!needsAuth && !needsVerified) {
+    return NextResponse.next();
+  }
 
   const {
     data: { user }
