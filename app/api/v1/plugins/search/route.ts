@@ -144,7 +144,7 @@ export async function GET(request: Request) {
 
   const pluginsOut = filteredPlugins.map((p: any) => {
     const agg = ratingsByPlugin.get(p.id);
-    const rating = agg && agg.count ? agg.sum / agg.count : 4.2;
+    const rating = agg && agg.count ? agg.sum / agg.count : 0;
 
     return {
       id: p.id,

@@ -4,7 +4,7 @@ import { DocsToc, type DocsTocItem } from "@/components/docs-toc";
 const toc: DocsTocItem[] = [
   { id: "overview", title: "Overview", group: "Getting started" },
   { id: "install", title: "Install MCMerchantLoader", group: "Getting started" },
-  { id: "build-from-source", title: "Download jar (build from source)", group: "Getting started" },
+  { id: "download-jar", title: "Download jar", group: "Getting started" },
   { id: "first-run", title: "First run & mcmerchant.yml", group: "Getting started" },
   { id: "config", title: "mcmerchant.yml config reference", group: "Configuration" },
   { id: "plugins-entry", title: "`plugins:` entry format", group: "Configuration" },
@@ -62,9 +62,6 @@ export default function LoaderDocsPage() {
             >
               Download MCMerchantLoader-1.0.0.jar
             </Link>
-            <p className="mt-2 text-xs text-gray-500">
-              Download is served by <code>/api/downloads/loader</code>.
-            </p>
           </div>
 
           <p className="mt-4 text-xs text-gray-500">
@@ -111,7 +108,7 @@ export default function LoaderDocsPage() {
                 <div className="mt-4 rounded-2xl border border-gray-800/80 bg-gray-950/30 p-6">
                   <p className="text-sm font-semibold text-gray-100">Installation steps</p>
                   <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-gray-300">
-                    <li>Download or build <code>MCMerchantLoader.jar</code></li>
+                    <li>Download <code>MCMerchantLoader-1.0.0.jar</code> from the button at the top of this page</li>
                     <li>Copy it into your server’s <code>/plugins</code> directory</li>
                     <li>Start the server (it will create a default <code>mcmerchant.yml</code>)</li>
                     <li>Edit <code>mcmerchant.yml</code> and add your purchased entries</li>
@@ -120,29 +117,24 @@ export default function LoaderDocsPage() {
                 </div>
               </section>
 
-              <section id="build-from-source" className="scroll-mt-28">
-                <h2 className="text-xl font-semibold text-gray-50">Download jar (build from source)</h2>
+              <section id="download-jar" className="scroll-mt-28">
+                <h2 className="text-xl font-semibold text-gray-50">Download jar</h2>
                 <p className="mt-2 text-sm text-gray-300">
-                  This repo currently documents building the loader from source. After building, the resulting jar is the file you upload/install on your server.
+                  Use the hosted installer flow to download the official loader jar. You do not need to build anything from source.
                 </p>
-                <div className="mt-4 overflow-auto rounded-xl border border-gray-800/80 bg-black/30 p-4">
-                  <pre className="text-xs text-gray-200">
-                    <code>{`# From the repo root (workspace-local Maven repo):
-REPO_LOCAL="./mcmerchant-loader/.m2repo"
-
-cd mcmerchant-updater
-mvn -q -DskipTests install -Dmaven.repo.local="$REPO_LOCAL"
-
-cd ../mcmerchant-loader
-mvn -q -DskipTests clean package -Dmaven.repo.local="$REPO_LOCAL"
-
-# Output:
-mcmerchant-loader/target/MCMerchantLoader-1.0.0.jar
-`}</code>
-                  </pre>
+                <div className="mt-4 rounded-xl border border-gray-800/80 bg-gray-950/30 p-4">
+                  <p className="text-sm text-gray-200">
+                    Download link:{" "}
+                    <Link href="/loader/install" className="font-medium text-brand-400 hover:underline">
+                      /loader/install
+                    </Link>
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    The download is served by <code>/api/downloads/loader</code>.
+                  </p>
                 </div>
                 <p className="mt-3 text-xs text-gray-500">
-                  After building, copy <code>MCMerchantLoader-1.0.0.jar</code> into your server’s <code>/plugins</code> folder (rename to <code>MCMerchantLoader-1.0.0.jar</code> if you prefer).
+                  After downloading, copy <code>MCMerchantLoader-1.0.0.jar</code> into your server’s <code>/plugins</code> folder.
                 </p>
               </section>
 
@@ -366,7 +358,11 @@ X-Server-Software: {Bukkit.getName()}
                       Where do I get the jar to install?
                     </summary>
                     <p className="mt-3 text-sm text-gray-300">
-                      Use the “build from source” instructions on this page, or place your server-local <code>MCMerchantLoader.jar</code> in the <code>/plugins</code> folder. Once you have a public release artifact, we can replace the build steps with a direct download link.
+                      Use the download button at the top of this page (or open{" "}
+                      <Link href="/loader/install" className="text-brand-400 hover:underline">
+                        /loader/install
+                      </Link>
+                      ), then place the jar in your server’s <code>/plugins</code> folder.
                     </p>
                   </details>
 

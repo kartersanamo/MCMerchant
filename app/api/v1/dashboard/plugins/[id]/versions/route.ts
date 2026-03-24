@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { sendVersionReleaseNotifications } from "@/lib/notifications/version-release";
 
 function parseMinecraftVersions(input: string) {
   return input
@@ -64,7 +66,7 @@ export async function POST(
     // Ensure plugin belongs to seller
     const { data: plugin } = await supabase
       .from("plugins")
-      .select("id, seller_id")
+      .select("id, seller_id, slug, name")
       .eq("id", params.id)
       .maybeSingle();
 
@@ -140,6 +142,26 @@ export async function POST(
         { error: insertErr?.message ?? "Failed to save version", code: "insert_failed" },
         { status: 400 }
       );
+    }
+
+    // Important event: notify existing buyers/license holders of a new release.
+    try {
+      const admin = createSupabaseServerClient();
+      await sendVersionReleaseNotifications({
+        supabase: admin as any,
+        pluginId: params.id,
+        pluginSlug: String(plugin.slug ?? ""),
+        pluginName: String(plugin.name ?? "Plugin"),
+        version: normalizedVersion,
+        changelog: changelog || null,
+        sellerId
+      });
+    } catch (err) {
+      console.error("[versions POST] version-release notifications failed", {
+        pluginId: params.id,
+        version: normalizedVersion,
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
 
     return NextResponse.json({ id: inserted.id }, { status: 200 });

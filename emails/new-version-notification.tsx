@@ -1,13 +1,11 @@
 import * as React from "react";
-import {
-  Button,
-  Container,
-  Heading,
-  Hr,
-  Link,
-  Section,
-  Text
-} from "@react-email/components";
+import { Button } from "@react-email/button";
+import { Container } from "@react-email/container";
+import { Heading } from "@react-email/heading";
+import { Hr } from "@react-email/hr";
+import { Link } from "@react-email/link";
+import { Section } from "@react-email/section";
+import { Text } from "@react-email/text";
 
 export type NewVersionNotificationEmailProps = {
   pluginName: string;
@@ -15,6 +13,7 @@ export type NewVersionNotificationEmailProps = {
   changelog: string | null;
   downloadUrl: string;
   pluginUrl: string;
+  managePrefsUrl: string;
 };
 
 export default function NewVersionNotificationEmail({
@@ -22,7 +21,8 @@ export default function NewVersionNotificationEmail({
   version,
   changelog,
   downloadUrl,
-  pluginUrl
+  pluginUrl,
+  managePrefsUrl
 }: NewVersionNotificationEmailProps) {
   return (
     <Container>
@@ -52,6 +52,9 @@ export default function NewVersionNotificationEmail({
         <Button href={downloadUrl}>Download</Button>
         <Text style={{ marginTop: 12 }}>
           View plugin page: <Link href={pluginUrl}>{pluginName}</Link>
+        </Text>
+        <Text style={{ marginTop: 12, color: "#71717a", fontSize: 12 }}>
+          <Link href={managePrefsUrl}>Manage email preferences</Link>
         </Text>
       </Section>
     </Container>

@@ -316,9 +316,28 @@ export default async function PluginPage({
                       </div>
                     </div>
                     {v.changelog ? (
-                      <div className="mt-3 whitespace-pre-wrap text-sm text-gray-300">
-                        {v.changelog}
-                      </div>
+                      <details className="group mt-3 rounded-lg border border-gray-800 bg-gray-950/30">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm text-gray-300 marker:content-none">
+                          <span className="font-medium text-gray-200">Changelog</span>
+                          <svg
+                            className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            aria-hidden
+                          >
+                            <path
+                              d="M5 7.5L10 12.5L15 7.5"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </summary>
+                        <div className="border-t border-gray-800 px-3 py-3">
+                          <MarkdownContent content={String(v.changelog ?? "")} />
+                        </div>
+                      </details>
                     ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
                       {(v.minecraft_versions ?? []).map((mv: string) => (

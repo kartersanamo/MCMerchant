@@ -1,13 +1,58 @@
 import Link from "next/link";
 import { PluginGrid } from "@/components/plugin-grid";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// Completely static - serve the page from cache without any database queries
-export const dynamic = 'force-static';
-export const revalidate = false;
+// Keep landing fast, but refresh featured plugins periodically.
+export const revalidate = 300;
 
-export default function LandingPage() {
-  // No database queries - page loads instantly
-  const pluginsForGrid: any[] = [];
+export default async function LandingPage() {
+  const supabase = createSupabaseServerClient();
+  const { data: plugins } = await supabase
+    .from("plugins")
+    .select("id, slug, name, tagline, cover_image_url, price_cents, total_downloads, seller_id")
+    .eq("status", "published")
+    .order("updated_at", { ascending: false })
+    .limit(6);
+
+  const basePlugins = plugins ?? [];
+  const pluginIds = basePlugins.map((p: any) => p.id);
+  const sellerIds = Array.from(new Set(basePlugins.map((p: any) => p.seller_id)));
+
+  const [{ data: profiles }, { data: reviews }] = await Promise.all([
+    sellerIds.length
+      ? supabase.from("profiles").select("id, username").in("id", sellerIds)
+      : Promise.resolve({ data: [] as any[] }),
+    pluginIds.length
+      ? supabase.from("reviews").select("plugin_id, rating").in("plugin_id", pluginIds)
+      : Promise.resolve({ data: [] as any[] })
+  ]);
+
+  const usernameById = new Map<string, string>(
+    (profiles ?? []).map((u: any) => [u.id, u.username ?? "Unknown"])
+  );
+  const ratingsByPlugin = new Map<string, { sum: number; count: number }>();
+  (reviews ?? []).forEach((r: any) => {
+    const pid = r.plugin_id;
+    const cur = ratingsByPlugin.get(pid) ?? { sum: 0, count: 0 };
+    cur.sum += Number(r.rating ?? 0);
+    cur.count += 1;
+    ratingsByPlugin.set(pid, cur);
+  });
+
+  const pluginsForGrid = basePlugins.map((p: any) => {
+    const agg = ratingsByPlugin.get(p.id);
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      tagline: p.tagline ?? "",
+      cover_image_url: p.cover_image_url ?? null,
+      seller_username: usernameById.get(p.seller_id) ?? "Unknown",
+      rating: agg && agg.count ? agg.sum / agg.count : 0,
+      price_cents: p.price_cents ?? 0,
+      total_downloads: p.total_downloads ?? 0
+    };
+  });
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -27,12 +72,12 @@ export default function LandingPage() {
           </div>
 
           <h1 className="mt-6 text-4xl font-semibold leading-tight tracking-tight text-gray-50 sm:text-5xl">
-            Your storefront. Your licenses. Your update channel.
+            Your storefront. Your licenses. Your plugins.
           </h1>
 
           <p className="mt-4 max-w-2xl text-gray-300">
-            MCMerchant is built so you market <span className="text-gray-100">you</span>—a branded public storefront,
-            Stripe payouts, license keys, and MCMerchantLoader so buyers stay current without hunting Discord threads.
+            MCMerchant is built so you can market <span className="text-gray-100">yourself</span>—with a branded public storefront,
+            Stripe payouts, license keys, and MCMerchantLoader so buyers stay current with all your updates.
             Custom domains and deeper build-pipeline tooling are on the roadmap.
           </p>
 
@@ -81,20 +126,6 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-
-          <div className="mt-8 overflow-hidden rounded-2xl border border-gray-800 bg-gray-950/30">
-            <div className="flex items-center justify-between gap-4 border-b border-gray-800 bg-gray-900/20 px-4 py-3">
-              <div className="text-sm font-medium text-gray-200">Example update check flow</div>
-              <div className="text-xs text-gray-500">Copy/paste friendly</div>
-            </div>
-            <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-gray-200">
-{`curl -G "https://mcmmerchant.net/api/v1/plugins/<pluginId>/latest" \\
-  -H "X-License-Key: <PDEX-XXXX-XXXX-XXXX-XXXX>" \\
-  -H "X-Plugin-Version: 1.0.0" \\
-  -H "X-Minecraft-Version: 1.21.11" \\
-  -H "X-Server-Software: Paper"`}
-            </pre>
-          </div>
         </section>
 
         {/* Platform pillars */}
@@ -107,8 +138,8 @@ export default function LandingPage() {
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             {[
               { t: "Storefront", d: "Share one link forever—even as you ship new jars." },
-              { t: "License graph", d: "Every purchase ties to a key—revoke, rotate, and audit from one system." },
-              { t: "Updater as product", d: "Fewer “how do I update?” tickets; loader + API do the boring work." }
+              { t: "License management", d: "Every purchase ties to a key to ensure only valid users can use your plugins." },
+              { t: "Merchant Loader", d: "No more users asking how to update—the loader does it automatically." }
             ].map((x) => (
               <div key={x.t} className="rounded-xl border border-gray-800 bg-gray-950/30 p-4">
                 <div className="text-sm font-semibold text-gray-100">{x.t}</div>
@@ -279,12 +310,12 @@ export default function LandingPage() {
             <div className="mt-4 space-y-4">
               {[
                 {
-                  quote: "We can focus on releases instead of support tickets about “where’s the update?”",
-                  by: "Server-side plugin maintainer"
+                  quote: "...",
+                  by: "..."
                 },
                 {
-                  quote: "The staging flow + checksums are exactly what we want for safe upgrades.",
-                  by: "Indie developer"
+                  quote: "...",
+                  by: "..."
                 }
               ].map((q) => (
                 <blockquote key={q.by} className="rounded-xl border border-gray-800 bg-gray-900/30 p-4">

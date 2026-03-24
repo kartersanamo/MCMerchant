@@ -12,8 +12,14 @@ type Props = {
   displayName: string;
   initialPrefs: {
     productUpdates: boolean;
+    versionReleaseEmails: boolean;
     marketingEmails: boolean;
   };
+  discordConnection: {
+    id: string;
+    username: string | null;
+    globalName: string | null;
+  } | null;
 };
 
 type Notice = { type: "ok" | "err"; text: string } | null;
@@ -32,7 +38,8 @@ export function AccountSettingsPanel({
   emailVerified,
   username,
   displayName,
-  initialPrefs
+  initialPrefs,
+  discordConnection
 }: Props) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
@@ -44,11 +51,20 @@ export function AccountSettingsPanel({
   const [newEmail, setNewEmail] = useState("");
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailNotice, setEmailNotice] = useState<Notice>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteNotice, setInviteNotice] = useState<Notice>(null);
 
   const [passwordLinkSending, setPasswordLinkSending] = useState(false);
+  const [reauthSending, setReauthSending] = useState(false);
+  const [reauthCode, setReauthCode] = useState("");
+  const [secureNewPassword, setSecureNewPassword] = useState("");
+  const [secureConfirmPassword, setSecureConfirmPassword] = useState("");
+  const [securePasswordSubmitting, setSecurePasswordSubmitting] = useState(false);
   const [securityNotice, setSecurityNotice] = useState<Notice>(null);
 
   const [productUpdates, setProductUpdates] = useState(initialPrefs.productUpdates);
+  const [versionReleaseEmails, setVersionReleaseEmails] = useState(initialPrefs.versionReleaseEmails);
   const [marketingEmails, setMarketingEmails] = useState(initialPrefs.marketingEmails);
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [prefsNotice, setPrefsNotice] = useState<Notice>(null);
@@ -154,6 +170,104 @@ export function AccountSettingsPanel({
     setPasswordLinkSending(false);
   }
 
+  async function sendReauthEmail() {
+    setSecurityNotice(null);
+    setReauthSending(true);
+    try {
+      const result = await supabase.auth.reauthenticate();
+      if (result.error) {
+        setSecurityNotice({
+          type: "err",
+          text: result.error.message || "Could not send reauthentication email."
+        });
+        setReauthSending(false);
+        return;
+      }
+      setSecurityNotice({
+        type: "ok",
+        text: "Reauthentication email sent. Enter the 6-digit code from your inbox below."
+      });
+    } catch {
+      setSecurityNotice({ type: "err", text: "Network error. Try again." });
+    }
+    setReauthSending(false);
+  }
+
+  async function updatePasswordWithReauth(e: React.FormEvent) {
+    e.preventDefault();
+    setSecurityNotice(null);
+
+    const nonce = reauthCode.trim();
+    if (!/^\d{6}$/.test(nonce)) {
+      setSecurityNotice({ type: "err", text: "Enter the 6-digit reauthentication code from your email." });
+      return;
+    }
+    if (secureNewPassword.length < 8) {
+      setSecurityNotice({ type: "err", text: "New password must be at least 8 characters." });
+      return;
+    }
+    if (secureNewPassword !== secureConfirmPassword) {
+      setSecurityNotice({ type: "err", text: "New password and confirmation do not match." });
+      return;
+    }
+
+    setSecurePasswordSubmitting(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: secureNewPassword,
+        nonce
+      });
+      if (error) {
+        setSecurityNotice({ type: "err", text: error.message || "Could not update password." });
+        setSecurePasswordSubmitting(false);
+        return;
+      }
+
+      setSecurityNotice({ type: "ok", text: "Password updated successfully." });
+      setReauthCode("");
+      setSecureNewPassword("");
+      setSecureConfirmPassword("");
+    } catch {
+      setSecurityNotice({ type: "err", text: "Network error. Try again." });
+    }
+    setSecurePasswordSubmitting(false);
+  }
+
+  async function inviteUser(e: React.FormEvent) {
+    e.preventDefault();
+    setInviteNotice(null);
+    const target = inviteEmail.trim().toLowerCase();
+    if (!target || !target.includes("@")) {
+      setInviteNotice({ type: "err", text: "Enter a valid email address." });
+      return;
+    }
+    setInviteSending(true);
+    try {
+      const res = await fetch("/api/auth/invite-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email: target })
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) {
+        setInviteNotice({ type: "err", text: data.error || "Could not send invite." });
+        setInviteSending(false);
+        return;
+      }
+      setInviteNotice({
+        type: "ok",
+        text:
+          data.message ||
+          "If that address can receive invites, they’ll get an invitation email shortly."
+      });
+      setInviteEmail("");
+    } catch {
+      setInviteNotice({ type: "err", text: "Network error. Try again." });
+    }
+    setInviteSending(false);
+  }
+
   async function savePreferences(e: React.FormEvent) {
     e.preventDefault();
     setPrefsNotice(null);
@@ -162,6 +276,7 @@ export function AccountSettingsPanel({
       data: {
         preferences: {
           product_updates: productUpdates,
+          version_release_emails: versionReleaseEmails,
           marketing_emails: marketingEmails
         }
       }
@@ -251,8 +366,8 @@ export function AccountSettingsPanel({
       <section className="rounded-2xl border border-gray-800 bg-gray-900/30 p-6">
         <h2 className="text-lg font-semibold text-gray-100">Security</h2>
         <p className="mt-1 text-sm text-gray-400">
-          We&apos;ll email you a secure link. Open it on this site, then enter your new password twice (minimum 8
-          characters; both fields must match).
+          For secure password changes, request a reauthentication code and enter it with your new password.
+          You can also use a standard password reset link.
         </p>
         <div className="mt-5 space-y-4">
           {securityNotice ? (
@@ -268,6 +383,121 @@ export function AccountSettingsPanel({
           >
             {passwordLinkSending ? "Sending…" : "Email me a password reset link"}
           </button>
+          <button
+            type="button"
+            disabled={reauthSending}
+            onClick={() => void sendReauthEmail()}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 disabled:opacity-60"
+          >
+            {reauthSending ? "Sending…" : "Send reauthentication code"}
+          </button>
+
+          <form onSubmit={updatePasswordWithReauth} className="space-y-3 rounded-xl border border-gray-800 bg-gray-950/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Secure password change
+            </p>
+            <div>
+              <label className="block text-xs text-gray-400">Reauthentication code</label>
+              <input
+                value={reauthCode}
+                onChange={(e) => setReauthCode(e.target.value)}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                className="mt-1 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100"
+                placeholder="123456"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400">New password</label>
+              <input
+                type="password"
+                value={secureNewPassword}
+                onChange={(e) => setSecureNewPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100"
+                placeholder="At least 8 characters"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400">Confirm new password</label>
+              <input
+                type="password"
+                value={secureConfirmPassword}
+                onChange={(e) => setSecureConfirmPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100"
+                placeholder="Re-enter new password"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={securePasswordSubmitting}
+              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-gray-950 disabled:opacity-60"
+            >
+              {securePasswordSubmitting ? "Updating…" : "Update password with code"}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-800 bg-gray-900/30 p-6">
+        <h2 className="text-lg font-semibold text-gray-100">Invite user</h2>
+        <p className="mt-1 text-sm text-gray-400">
+          Send an account invitation email. They&apos;ll get a sign-up link from Supabase.
+        </p>
+        <form onSubmit={inviteUser} className="mt-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Invite by email
+            </label>
+            <input
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              type="email"
+              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-100"
+              placeholder="friend@example.com"
+            />
+          </div>
+          {inviteNotice ? (
+            <p className={inviteNotice.type === "ok" ? "text-sm text-emerald-300" : "text-sm text-red-300"}>
+              {inviteNotice.text}
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={inviteSending}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 disabled:opacity-60"
+          >
+            {inviteSending ? "Sending invite…" : "Send invite"}
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border border-gray-800 bg-gray-900/30 p-6">
+        <h2 className="text-lg font-semibold text-gray-100">Discord Connection</h2>
+        <p className="mt-1 text-sm text-gray-400">
+          Sync your Discord account to unlock the verified role in the community server.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {discordConnection ? (
+            <>
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
+                Connected: {discordConnection.globalName || discordConnection.username || discordConnection.id}
+              </span>
+              <a
+                href="/account/connections/discord/unsync"
+                className="rounded-lg border border-amber-600/40 bg-amber-600/10 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-600/20"
+              >
+                Unsync Discord
+              </a>
+            </>
+          ) : (
+            <a
+              href="/account/connections/discord/sync"
+              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-gray-950 hover:brightness-110"
+            >
+              Sync Discord
+            </a>
+          )}
         </div>
       </section>
 
@@ -283,6 +513,15 @@ export function AccountSettingsPanel({
               className="h-4 w-4 rounded border-gray-700 bg-gray-950 text-brand-500"
             />
             Product updates and release announcements
+          </label>
+          <label className="flex items-center gap-3 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={versionReleaseEmails}
+              onChange={(e) => setVersionReleaseEmails(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-700 bg-gray-950 text-brand-500"
+            />
+            New version notifications for plugins I own
           </label>
           <label className="flex items-center gap-3 text-sm text-gray-300">
             <input

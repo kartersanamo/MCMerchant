@@ -1,6 +1,8 @@
-# Update Docker Image (quick copy/paste)
+# Update Docker Image
 
 ```bash
+cd /home/sanamo/MCMerchant/mcmerchant
+
 # 1) Build the new image
 docker build -t mcmerchant:latest .
 

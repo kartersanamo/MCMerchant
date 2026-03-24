@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
+import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 import { userCanReviewPlugin } from "@/lib/reviews/eligibility";
 import { parseRating, parseReviewBody } from "@/lib/reviews/validate";
 
@@ -8,9 +8,9 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const gate = await requireVerifiedUserForApi();
+  const gate = await requireVerifiedUserForRlsApi();
   if (gate instanceof NextResponse) return gate;
-  const { userId } = gate;
+  const { userId, supabase: rlsSupabase } = gate;
 
   const pluginId = params.id;
   let bodyJson: unknown;
@@ -65,7 +65,7 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const { data: row, error: insErr } = await supabase
+  const { data: row, error: insErr } = await rlsSupabase
     .from("reviews")
     .insert({
       plugin_id: pluginId,

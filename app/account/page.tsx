@@ -26,9 +26,15 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   ]);
 
   const metadata = (authData.user?.user_metadata ?? {}) as {
-    preferences?: { product_updates?: boolean; marketing_emails?: boolean };
+    preferences?: {
+      product_updates?: boolean;
+      version_release_emails?: boolean;
+      marketing_emails?: boolean;
+    };
+    discord_connection?: { id?: string; username?: string; global_name?: string | null };
   };
   const preferences = metadata.preferences ?? {};
+  const discordConnection = metadata.discord_connection;
   const username = profile?.username ?? user.displayName;
   const displayName = profile?.display_name ?? user.displayName;
 
@@ -45,6 +51,26 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       {notice === "email_change" ? (
         <div className="mt-4 rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 text-sm text-emerald-100/90">
           Email change confirmed. You&apos;re all set.
+        </div>
+      ) : null}
+      {notice === "discord_synced" ? (
+        <div className="mt-4 rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 text-sm text-emerald-100/90">
+          Discord account connected successfully.
+        </div>
+      ) : null}
+      {notice === "discord_unsynced" ? (
+        <div className="mt-4 rounded-xl border border-amber-500/35 bg-amber-500/10 p-4 text-sm text-amber-100/90">
+          Discord account disconnected.
+        </div>
+      ) : null}
+      {notice === "discord_sync_failed" ? (
+        <div className="mt-4 rounded-xl border border-red-500/35 bg-red-500/10 p-4 text-sm text-red-100/90">
+          Could not complete Discord sync. Please try again.
+        </div>
+      ) : null}
+      {notice === "discord_config_error" ? (
+        <div className="mt-4 rounded-xl border border-red-500/35 bg-red-500/10 p-4 text-sm text-red-100/90">
+          Discord sync is not configured yet. Contact support.
         </div>
       ) : null}
       {!user.emailVerified ? (
@@ -75,8 +101,18 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           displayName={displayName}
           initialPrefs={{
             productUpdates: !!preferences.product_updates,
+            versionReleaseEmails: preferences.version_release_emails ?? !!preferences.product_updates,
             marketingEmails: !!preferences.marketing_emails
           }}
+          discordConnection={
+            discordConnection?.id
+              ? {
+                  id: discordConnection.id,
+                  username: discordConnection.username ?? null,
+                  globalName: discordConnection.global_name ?? null
+                }
+              : null
+          }
         />
       </div>
     </div>

@@ -72,9 +72,6 @@ export default async function LicensesPage() {
           <div className="mt-2 text-sm text-gray-400">
             If you just completed a purchase, the webhook can take a moment to generate the license key.
           </div>
-          <div className="mt-2 text-xs text-gray-500">
-            In local dev, you may need to run <code className="rounded bg-gray-950/50 px-1 py-0.5">pnpm webhooks:listen</code> in a separate terminal.
-          </div>
 
           {recentPurchases && recentPurchases.length ? (
             <div className="mt-4 space-y-2 text-xs text-gray-400">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SUPPORT_DISCORD_URL } from "@/lib/app-url";
 
 export function ReportPluginPlaceholder() {
   const [open, setOpen] = useState(false);
@@ -33,7 +34,17 @@ export function ReportPluginPlaceholder() {
                 Report plugin
               </h2>
               <p className="mt-2 text-sm text-gray-400">
-                This feature is not implemented yet. Plugin reporting will be added in a future update.
+                Need to report this plugin? Please join our Discord support server and open a report with the plugin link and details.
+              </p>
+              <p className="mt-2 text-sm">
+                <a
+                  href={SUPPORT_DISCORD_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-brand-400 hover:underline"
+                >
+                  Join the MCMerchant Discord
+                </a>
               </p>
               <div className="mt-5 flex justify-end">
                 <button

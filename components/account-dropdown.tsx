@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRef, useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AuthedUser } from "@/lib/supabase/server";
 
@@ -29,15 +28,26 @@ function DefaultAvatarIcon({ className }: { className?: string }) {
 
 export function AccountDropdown({ user }: { user: AuthedUser }) {
   const [open, setOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
-    setOpen(false);
-    router.refresh();
-    router.push("/");
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await supabase.auth.signOut({ scope: "global" });
+      await fetch("/api/auth/signout", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      });
+    } finally {
+      setOpen(false);
+      setIsSigningOut(false);
+      // Full navigation guarantees all SSR surfaces (header/footer) re-read cleared cookies.
+      window.location.href = "/";
+    }
   }
 
   useEffect(() => {
@@ -107,9 +117,10 @@ export function AccountDropdown({ user }: { user: AuthedUser }) {
             <button
               type="button"
               onClick={handleSignOut}
+              disabled={isSigningOut}
               className="w-full rounded-lg px-3 py-2 text-left text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-200"
             >
-              Sign out
+              {isSigningOut ? "Signing out..." : "Sign out"}
             </button>
           </div>
         </div>
