@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ function normalizeEmail(input: unknown): string {
 }
 
 export async function POST(req: Request) {
+  const csrf = enforceCsrfForRequest(req);
+  if (csrf) return csrf;
   const gate = await requireVerifiedUserForApi();
   if (gate instanceof NextResponse) return gate;
 

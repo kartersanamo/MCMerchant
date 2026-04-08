@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { timingSafeEqual } from "node:crypto";
 
 const keyPattern = /^PDEX-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
@@ -11,11 +12,17 @@ function maskLicense(raw: string): string {
 
 export async function POST(request: Request) {
   const expectedKey = process.env.MERCHANTBOT_LICENSE_LOOKUP_KEY?.trim() ?? "";
-  if (expectedKey) {
-    const got = request.headers.get("x-mcmerchant-bot-key")?.trim() ?? "";
-    if (!got || got !== expectedKey) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+  if (!expectedKey) {
+    return NextResponse.json({ error: "server_misconfigured" }, { status: 503 });
+  }
+  const got = request.headers.get("x-mcmerchant-bot-key")?.trim() ?? "";
+  if (!got) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const expectedBuf = Buffer.from(expectedKey);
+  const gotBuf = Buffer.from(got);
+  if (expectedBuf.length !== gotBuf.length || !timingSafeEqual(expectedBuf, gotBuf)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   let body: unknown = null;

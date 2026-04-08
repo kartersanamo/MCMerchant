@@ -406,6 +406,7 @@ export default async function PublicStorefrontPage({ params }: { params: { handl
                       fill
                       className="object-cover"
                       sizes="(max-width: 1024px) 100vw, 320px"
+                      unoptimized
                     />
                   ) : (
                     <div className="flex h-full min-h-[200px] items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 text-gray-600">

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendVersionReleaseNotifications } from "@/lib/notifications/version-release";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
+import { validateJarFile } from "@/lib/security/uploads";
 
 function parseMinecraftVersions(input: string) {
   return input
@@ -26,6 +28,8 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   try {
     const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
@@ -53,6 +57,15 @@ export async function POST(
         { error: "Please select a .jar file", code: "missing_jar" },
         { status: 400 }
       );
+    }
+    {
+      const validationError = validateJarFile(jarFile);
+      if (validationError) {
+        return NextResponse.json(
+          { error: validationError, code: "invalid_jar" },
+          { status: 400 }
+        );
+      }
     }
 
     const minecraft_versions = parseMinecraftVersions(minecraftVersionsRaw);

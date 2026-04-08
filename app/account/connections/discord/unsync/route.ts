@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 import { getDiscordOauthConfig, sendBotWebhook } from "@/lib/discord-sync";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const csrf = enforceCsrfForRequest(request, { protectSafeMethods: true });
+  if (csrf) return csrf;
   const requestUrl = new URL(request.url);
   const origin = getCanonicalAppOriginForServer() || requestUrl.origin;
   const supabase = createSupabaseServerClient();

@@ -4,13 +4,16 @@ import { Resend } from "resend";
 import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 import PasswordChangeEmail from "@/emails/password-change";
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/route-handler";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export const dynamic = "force-dynamic";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "MCMerchant";
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "hello@mcmerchant.net";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   const origin = getCanonicalAppOriginForServer();
   if (!origin) {
     return NextResponse.json(

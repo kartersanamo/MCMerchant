@@ -3,11 +3,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 import { userCanReviewPlugin } from "@/lib/reviews/eligibility";
 import { parseRating, parseReviewBody } from "@/lib/reviews/validate";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   const gate = await requireVerifiedUserForRlsApi();
   if (gate instanceof NextResponse) return gate;
   const { userId, supabase: rlsSupabase } = gate;

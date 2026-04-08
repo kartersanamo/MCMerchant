@@ -9,6 +9,7 @@ import {
 } from "@/lib/storefront-profile";
 import { normalizeStoreThemeInput } from "@/lib/storefront-theme";
 import crypto from "node:crypto";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,8 @@ function normalizeCustomDomain(v: string | null): { domain: string | null; error
 }
 
 export async function PATCH(req: Request) {
+  const csrf = enforceCsrfForRequest(req);
+  if (csrf) return csrf;
   const gate = await requireVerifiedUserForApi();
   if (gate instanceof NextResponse) return gate;
   const { userId } = gate;
@@ -153,7 +156,7 @@ export async function PATCH(req: Request) {
     payload.custom_domain_verified_at = null;
     payload.custom_domain_last_checked_at = null;
     payload.custom_domain_verification_token = parsed.domain
-      ? crypto.createHash("sha256").update(`${userId}:${parsed.domain}`).digest("hex").slice(0, 32)
+      ? crypto.randomBytes(16).toString("hex")
       : null;
   }
   if ("store_banner_url" in body) {
@@ -201,11 +204,7 @@ export async function PATCH(req: Request) {
       payload.custom_domain_status = "pending";
       payload.custom_domain_verified_at = null;
       payload.custom_domain_last_checked_at = null;
-      payload.custom_domain_verification_token = crypto
-        .createHash("sha256")
-        .update(`${userId}:${currentProfile.custom_domain}:${slugResult.slug ?? currentProfile.username}`)
-        .digest("hex")
-        .slice(0, 32);
+      payload.custom_domain_verification_token = crypto.randomBytes(16).toString("hex");
     }
   }
 

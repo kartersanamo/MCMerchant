@@ -36,6 +36,7 @@ export function PluginCard({ plugin }: { plugin: PluginCardData }) {
               fill
               className="object-cover transition duration-300 group-hover:scale-[1.02]"
               sizes="(max-width: 768px) 100vw, 33vw"
+              unoptimized
             />
           ) : (
             <div className="h-full w-full bg-gray-950" />

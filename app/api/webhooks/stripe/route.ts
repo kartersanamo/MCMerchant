@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { issueLicense } from "@/lib/licensing/generate";
 import { getResend } from "@/lib/resend";
 import PurchaseConfirmationEmail from "@/emails/purchase-confirmation";
+import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 
 async function handleCheckoutSessionCompleted(event: any) {
   const session = event.data.object;
@@ -127,7 +128,8 @@ async function handleCheckoutSessionCompleted(event: any) {
   }
 
   // 4) Email confirmation (best-effort)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getCanonicalAppOriginForServer();
+  if (!appUrl) return;
   const downloadUrl = `${appUrl}/api/downloads/${license.key}/${plugin_id}`;
   const buyerDashboardUrl = `${appUrl}/account/licenses`;
 

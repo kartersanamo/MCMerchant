@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getRequestPublicOrigin } from "@/lib/app-url";
 
 export async function GET(
   request: Request,
   { params }: { params: { pluginId: string } }
 ) {
   const supabase = createSupabaseServerClient();
+  const reqUrl = new URL(request.url);
+  const publicOrigin = getRequestPublicOrigin(request);
+  const buildUrl = (path: string) => new URL(path, publicOrigin);
   const pluginId = params.pluginId;
-  const versionId = new URL(request.url).searchParams.get("versionId");
+  const versionId = reqUrl.searchParams.get("versionId");
 
   const { data: authData } = await supabase.auth.getUser();
   const userId = authData.user?.id;
@@ -19,7 +23,9 @@ export async function GET(
       .maybeSingle();
     const slug = plugin?.slug ?? "plugin";
     return NextResponse.redirect(
-      new URL(`/login?redirect=${encodeURIComponent(`/plugin/${slug}/install${versionId ? `?versionId=${versionId}` : ""}`)}`, request.url),
+      buildUrl(
+        `/login?redirect=${encodeURIComponent(`/plugin/${slug}/install${versionId ? `?versionId=${versionId}` : ""}`)}`
+      ),
       302
     );
   }
@@ -43,7 +49,7 @@ export async function GET(
   if (!license && !isFree) {
     const slug = plugin?.slug ?? "plugin";
     return NextResponse.redirect(
-      new URL(`/plugin/${slug}?error=no_license`, request.url),
+      buildUrl(`/plugin/${slug}?error=no_license`),
       302
     );
   }
@@ -74,7 +80,7 @@ export async function GET(
   if (!fileUrl) {
     const slug = plugin?.slug ?? "plugin";
     return NextResponse.redirect(
-      new URL(`/plugin/${slug}?error=no_version`, request.url),
+      buildUrl(`/plugin/${slug}?error=no_version`),
       302
     );
   }

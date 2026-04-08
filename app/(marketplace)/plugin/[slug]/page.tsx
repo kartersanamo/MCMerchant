@@ -182,6 +182,7 @@ export default async function PluginPage({
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 1200px"
               priority
+              unoptimized
             />
           ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-gray-950/80 to-gray-950/10" />

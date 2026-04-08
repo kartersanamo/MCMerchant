@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/route-handler";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   const cookieStore = cookies();
   const supabase = createSupabaseRouteHandlerClient();
 

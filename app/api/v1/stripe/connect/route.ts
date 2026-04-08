@@ -3,8 +3,12 @@ import Stripe from "stripe";
 import { getStripe, getStripeApiMode } from "@/lib/stripe";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
+import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 
 export async function POST(request: Request) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   const gate = await requireVerifiedUserForApi();
   if (gate instanceof NextResponse) return gate;
   const { userId } = gate;
@@ -20,7 +24,10 @@ export async function POST(request: Request) {
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getCanonicalAppOriginForServer();
+  if (!appUrl) {
+    return NextResponse.json({ error: "missing_public_app_url" }, { status: 500 });
+  }
   const mode = getStripeApiMode();
 
   const supabase = createSupabaseServerClient();

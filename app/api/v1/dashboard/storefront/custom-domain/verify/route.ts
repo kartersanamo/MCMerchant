@@ -3,6 +3,7 @@ import dns from "node:dns/promises";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
 import { isMissingColumnError } from "@/lib/storefront-profile";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +45,9 @@ async function hasExpectedCname(domain: string, expectedTarget: string): Promise
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   const gate = await requireVerifiedUserForApi();
   if (gate instanceof NextResponse) return gate;
   const { userId } = gate;

@@ -7,7 +7,17 @@ export function getPublicAppOrigin(): string {
   const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (raw) {
     try {
-      return new URL(raw.replace(/\/$/, "")).origin;
+      const u = new URL(raw.replace(/\/$/, ""));
+      const host = u.hostname.toLowerCase();
+      // Match server: never trust localhost in env for production builds.
+      if (
+        process.env.NODE_ENV === "production" &&
+        (host === "localhost" || host === "127.0.0.1")
+      ) {
+        // fall through to window
+      } else {
+        return u.origin;
+      }
     } catch {
       // ignore invalid env
     }
@@ -16,6 +26,36 @@ export function getPublicAppOrigin(): string {
     return window.location.origin;
   }
   return "";
+}
+
+/**
+ * Prefer NEXT_PUBLIC_APP_URL when the user is on localhost so downloads hit the real deployment.
+ * Otherwise "" so links stay same-origin (custom storefront domains keep working).
+ */
+export function getPublicApiOriginForBrowser(): string {
+  if (typeof window === "undefined") return "";
+  const h = window.location.hostname.toLowerCase();
+  if (h !== "localhost" && h !== "127.0.0.1") return "";
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return "";
+  try {
+    const u = new URL(raw.replace(/\/$/, ""));
+    const eh = u.hostname.toLowerCase();
+    if (eh === "localhost" || eh === "127.0.0.1") return "";
+    return u.origin;
+  } catch {
+    return "";
+  }
+}
+
+/** Public origin for redirects: canonical env, else proxy-aware forwarded host (not raw request.url). */
+export function getRequestPublicOrigin(request: Request): string {
+  const reqUrl = new URL(request.url);
+  const canonical = getCanonicalAppOriginForServer();
+  const fwdHost = request.headers.get("x-forwarded-host")?.trim() || reqUrl.host;
+  const fwdProto =
+    request.headers.get("x-forwarded-proto")?.trim() || reqUrl.protocol.replace(":", "");
+  return canonical || `${fwdProto}://${fwdHost}`;
 }
 
 export function getEmailAuthCallbackUrl(nextPath = "/email-verified"): string {
@@ -30,7 +70,17 @@ export function getCanonicalAppOriginForServer(): string {
     process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (raw) {
     try {
-      return new URL(raw.replace(/\/$/, "")).origin;
+      const u = new URL(raw.replace(/\/$/, ""));
+      const host = u.hostname.toLowerCase();
+      // Guard against accidental production config like https://localhost:3000.
+      if (
+        process.env.NODE_ENV === "production" &&
+        (host === "localhost" || host === "127.0.0.1")
+      ) {
+        // ignore and keep falling back
+      } else {
+        return u.origin;
+      }
     } catch {
       // ignore
     }

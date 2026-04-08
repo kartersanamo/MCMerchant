@@ -3,13 +3,11 @@
 ```bash
 cd /home/sanamo/MCMerchant/mcmerchant
 
-# 1) Build the new image
 docker build -t mcmerchant:latest .
 
-# 2) Stop and remove old container (ignore errors if it doesn't exist)
-docker stop mcmerchant-prod || true
-docker rm mcmerchant-prod || true
+docker rm -f mcmerchant-prod || true
 
-# 3) Start the updated container
-docker run -d --name mcmerchant-prod -p 3000:3000 --env-file .env mcmerchant:latest
+docker run -d --name mcmerchant-prod --network host --env-file .env mcmerchant:latest
 ```
+
+If Docker networking is fixed later, the last command can go back to `-p 3000:3000`.

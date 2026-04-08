@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 import { sanitizeAuthNextParam } from "@/lib/auth/email-verification";
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/route-handler";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ function friendlyEmailChangeError(message: string): string {
 }
 
 export async function POST(req: Request) {
+  const csrf = enforceCsrfForRequest(req);
+  if (csrf) return csrf;
   let body: { email?: string };
   try {
     body = (await req.json()) as { email?: string };

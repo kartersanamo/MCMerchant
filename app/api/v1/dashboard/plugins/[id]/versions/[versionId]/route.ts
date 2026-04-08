@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 function parseMinecraftVersions(input: string) {
   // Accept either comma-separated or already-comma-joined strings.
@@ -24,6 +25,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string; versionId: string } }
 ) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   try {
     const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
@@ -143,6 +146,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string; versionId: string } }
 ) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   try {
     const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;

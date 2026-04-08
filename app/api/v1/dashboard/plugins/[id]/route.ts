@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
+import { validateCoverImageFile } from "@/lib/security/uploads";
 
 function parseTags(input: string) {
   return input
@@ -13,6 +15,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   try {
     const gate = await requireVerifiedUserForRlsApi();
     if (gate instanceof NextResponse) return gate;
@@ -55,6 +59,10 @@ export async function PATCH(
     const coverFile = formData.get("cover_image");
     if (coverFile && typeof (coverFile as File).arrayBuffer === "function") {
       const file = coverFile as File;
+      const validationError = validateCoverImageFile(file);
+      if (validationError) {
+        return NextResponse.json({ error: validationError, code: "invalid_cover_image" }, { status: 400 });
+      }
       const ext = file.name.split(".").pop() ?? "png";
       const path = `covers/${sellerId}/${existing.slug}-${Date.now()}.${ext}`;
       const uploadRes = await supabase.storage

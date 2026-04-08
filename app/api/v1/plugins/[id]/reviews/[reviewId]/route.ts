@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireVerifiedUserForApi } from "@/lib/auth/email-verification";
 import { parseRating, parseReviewBody } from "@/lib/reviews/validate";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
 
 async function loadReviewForPlugin(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -21,6 +22,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string; reviewId: string } }
 ) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   const gate = await requireVerifiedUserForApi();
   if (gate instanceof NextResponse) return gate;
   const { userId } = gate;
@@ -82,9 +85,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string; reviewId: string } }
 ) {
+  const csrf = enforceCsrfForRequest(request);
+  if (csrf) return csrf;
   const gate = await requireVerifiedUserForApi();
   if (gate instanceof NextResponse) return gate;
   const { userId } = gate;

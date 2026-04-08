@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createSupabaseServerClient, getAuthedUserId } from "@/lib/supabase/server";
+import { enforceCsrfForRequest } from "@/lib/security/csrf";
+import { getCanonicalAppOriginForServer } from "@/lib/app-url";
 
 export async function GET(request: Request) {
+  const csrf = enforceCsrfForRequest(request, { protectSafeMethods: true });
+  if (csrf) return csrf;
   const url = new URL(request.url);
   const pluginId = url.searchParams.get("pluginId");
   const versionId = url.searchParams.get("versionId");
@@ -40,7 +44,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "seller_not_connected" }, { status: 400 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getCanonicalAppOriginForServer();
+  if (!appUrl) {
+    return NextResponse.json({ error: "missing_public_app_url" }, { status: 500 });
+  }
   const stripe = getStripe();
 
   // Destination charges require the connected account to have transfers (or legacy_payments) capability.

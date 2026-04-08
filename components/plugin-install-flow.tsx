@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getPublicApiOriginForBrowser } from "@/lib/app-url";
 
 type Props = {
   pluginId: string;
@@ -21,8 +22,10 @@ export function PluginInstallFlow({ pluginId, pluginName, slug, isFree, versionI
       const base = isFree
         ? `/api/downloads/free/${pluginId}`
         : `/api/downloads/me/${pluginId}`;
-      const downloadUrl =
+      const path =
         versionId ? `${base}?versionId=${encodeURIComponent(versionId)}` : base;
+      const prefix = getPublicApiOriginForBrowser();
+      const downloadUrl = prefix ? `${prefix}${path}` : path;
       // Start download in new tab so we can redirect current window back to plugin page
       window.open(downloadUrl, "_blank", "noopener,noreferrer");
       window.location.href = `/plugin/${slug}`;

@@ -20,7 +20,9 @@ export function MarkdownContent({ content }: { content: string }) {
   const processed = preserveExtraBlankLines(content);
   return (
     <div className={`text-sm ${proseClasses}`}>
-      <ReactMarkdown remarkPlugins={[remarkBreaks]}>{processed}</ReactMarkdown>
+      <ReactMarkdown skipHtml remarkPlugins={[remarkBreaks]}>
+        {processed}
+      </ReactMarkdown>
     </div>
   );
 }
