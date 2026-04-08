@@ -94,7 +94,7 @@ export function getCanonicalAppOriginForServer(): string {
 }
 
 /** User support: open a ticket in the MCMerchant Discord server. */
-export const SUPPORT_DISCORD_URL = "https://discord.gg/yhkADUBcRe" as const;
+export const SUPPORT_DISCORD_URL = "https://discord.gg/gcTu2PhqQA" as const;
 
 /** Optional public repo URL for the footer (HTTPS only). READMEs that link to your site help discovery over time. */
 export function getPublicSourceRepoUrl(): string | null {

@@ -3,7 +3,8 @@ import { requireVerifiedUserForRlsApi } from "@/lib/auth/email-verification";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendVersionReleaseNotifications } from "@/lib/notifications/version-release";
 import { enforceCsrfForRequest } from "@/lib/security/csrf";
-import { validateJarFile } from "@/lib/security/uploads";
+import { validateUploadedPluginJar } from "@/lib/security/uploads";
+import { scanUploadWithAntivirus } from "@/lib/security/antivirus";
 
 function parseMinecraftVersions(input: string) {
   return input
@@ -59,13 +60,34 @@ export async function POST(
       );
     }
     {
-      const validationError = validateJarFile(jarFile);
+      const validationError = await validateUploadedPluginJar(jarFile);
       if (validationError) {
         return NextResponse.json(
           { error: validationError, code: "invalid_jar" },
           { status: 400 }
         );
       }
+    }
+
+    try {
+      const avResult = await scanUploadWithAntivirus(jarFile);
+      if (avResult?.status === "infected") {
+        return NextResponse.json(
+          {
+            error: `Upload rejected by antivirus scan (${avResult.signature}).`,
+            code: "infected_jar"
+          },
+          { status: 400 }
+        );
+      }
+    } catch (err: any) {
+      return NextResponse.json(
+        {
+          error: `Upload scanning unavailable: ${err?.message ?? "antivirus_error"}`,
+          code: "scan_unavailable"
+        },
+        { status: 503 }
+      );
     }
 
     const minecraft_versions = parseMinecraftVersions(minecraftVersionsRaw);

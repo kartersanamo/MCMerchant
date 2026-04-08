@@ -173,10 +173,10 @@ check-interval-hours: 6
 auto-download: false
 
 # Base URL for the MCMerchant API used by this loader.
-api-base-url: "https://mcmmerchant.net/api"
+api-base-url: "https://mcmerchant.net/api"
 
 # Base URL used for links shown to admins.
-app-base-url: "https://mcmmerchant.net"
+app-base-url: "https://mcmerchant.net"
 
 notify-on-join: true
 notify-in-console: true
