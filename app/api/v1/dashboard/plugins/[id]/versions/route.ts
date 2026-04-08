@@ -199,7 +199,7 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ id: inserted.id }, { status: 200 });
+    return NextResponse.json({ id: inserted.id, plugin_slug: plugin.slug }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "internal_error" }, { status: 500 });
   }

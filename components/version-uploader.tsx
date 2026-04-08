@@ -1,8 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MINECRAFT_VERSIONS, SERVER_PLATFORMS } from "@/lib/constants/minecraft";
+
+type UploadSuccessState = {
+  pluginSlug: string;
+};
 
 export function VersionUploader({ pluginId }: { pluginId: string }) {
   const router = useRouter();
@@ -10,11 +15,13 @@ export function VersionUploader({ pluginId }: { pluginId: string }) {
   const [changelog, setChangelog] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<UploadSuccessState | null>(null);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setSuccess(null);
 
     const form = e.currentTarget;
     const formData = new FormData(form);
@@ -26,25 +33,70 @@ export function VersionUploader({ pluginId }: { pluginId: string }) {
       formData.set("minecraft_versions", mcSelected.join(","));
     }
 
-    const res = await fetch(`/api/v1/dashboard/plugins/${pluginId}/versions`, {
-      method: "POST",
-      body: formData
-    });
+    try {
+      const res = await fetch(`/api/v1/dashboard/plugins/${pluginId}/versions`, {
+        method: "POST",
+        body: formData
+      });
 
-    const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError((data.error as string) || `Upload failed (${res.status})`);
+      if (!res.ok) {
+        setError((data.error as string) || `Upload failed (${res.status})`);
+        return;
+      }
+
+      form.reset();
+      setVersion("");
+      setChangelog("");
+
+      setSuccess({
+        pluginSlug: String(data.plugin_slug || "")
+      });
+
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    // Stay on the plugin edit page and switch to the Versions tab.
-    router.push(`/dashboard/plugins/${pluginId}/edit?tab=versions`);
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {success ? (
+        <div className="fixed left-1/2 top-4 z-50 w-[min(92vw,760px)] -translate-x-1/2 rounded-xl border border-emerald-400/40 bg-gradient-to-r from-emerald-950/95 via-emerald-900/90 to-teal-900/90 p-4 text-emerald-100 shadow-[0_14px_40px_-18px_rgba(16,185,129,0.7)] backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold tracking-wide text-emerald-200">Version uploaded successfully</p>
+              <p className="mt-1 text-sm text-emerald-100/90">
+                Your new version is uploaded, pushed to MerchantLoader, and ready for users.
+                {success.pluginSlug ? (
+                  <>
+                    {" "}
+                    <Link
+                      href={`/plugin/${success.pluginSlug}`}
+                      className="font-semibold text-emerald-200 underline decoration-emerald-300/80 underline-offset-2 transition hover:text-white"
+                    >
+                      View your plugin
+                    </Link>
+                    .
+                  </>
+                ) : null}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSuccess(null)}
+              className="rounded-md border border-emerald-300/40 px-2 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-400/20 hover:text-white"
+              aria-label="Dismiss upload success notification"
+            >
+              X
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div>
         <label className="block text-sm text-gray-300">Version</label>
         <input
